@@ -25,5 +25,10 @@
 
 library(dplyr)
 library(ggplot2)
+library(readr)
 
-#data <- 
+data <- read.csv("~/Documents/projects/data/ntw_data/development.csv", header = T)
+  # remove empties...  
+  
+  
+  
