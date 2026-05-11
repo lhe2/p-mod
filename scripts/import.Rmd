@@ -1,0 +1,63 @@
+---
+title: "modeling import"
+date: "2026-05-05"
+---
+
+for importing + some pre-cleaning of modeling from googlesheets
+
+re-run sections whenever the gsheets gets updated
+
+LAST RUN: 2026-05-10
+
+# loading & init
+
+```{r message = FALSE}
+library(tidyverse)
+library(googlesheets4)
+
+#library(lubridate) # for time stuff
+#conflicts_prefer(dplyr::filter) # if necessary
+
+here::i_am("_mod/scripts/import.Rmd")
+library(here)
+```
+
+```{r}
+raw <- read_sheet("https://docs.google.com/spreadsheets/d/1fc1dpmNwZe9cnEd09Bdj9QSeJNNbwksASuMs0s8G_14/edit?gid=1219594955#gid=1219594955",
+                     sheet = "data",
+                     col_types = "c") %>%
+  drop_na(id)
+
+df <- raw
+```
+
+## futzing
+
+```{r}
+# format numeric and date cols
+df <- df %>%
+  mutate(across(starts_with("date."), ~ str_c(., "/2026")),
+         across(starts_with("date"), as.Date, format = "%m/%d/%Y"),
+         across(c("id", starts_with(c("mass", "date"))), as.numeric)) %>% 
+  rename_with(~ paste0("j", .x), starts_with("date"))
+```
+
+
+## export
+```{r}
+#today <- format(Sys.time(), "%y%m%d-%H%M")
+
+# make a new "export" object
+export <- df %>%
+  select(-c(starts_with(c("h", "st", "time"))))
+
+#write.csv(raw, file = paste0(here("_mod/data/raw/"), "dev", today, ".csv"), row.names = FALSE)
+write.csv(export, file = paste0(here("_mod/data/clean/"), "dev.csv"), row.names = FALSE)
+```
+
+## cleanup
+```{r}
+rm(today)
+
+rm(raw, df)
+```

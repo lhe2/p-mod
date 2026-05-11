@@ -1,0 +1,96 @@
+---
+title: "tidy mod dev"
+date: "2026-05-05"
+---
+
+# # preamble
+
+prepping modeling wrangling
+
+final code is purled to a `.R` script, rerun `purl` step as needed to update the wrangling for analyses
+
+```{r for purling, eval=FALSE, include=FALSE, purl=FALSE}
+here::i_am("_mod/scripts/tidy.Rmd") # set wd
+
+knitr::purl("tidy.Rmd", here::here("_mod/scripts/R/tidy.R")) # purl current script
+  # save and apply updates to current .Rmd before purling!
+```
+
+# # load libs & pkgs
+
+```{r about}
+# tidy.R
+
+# knitted tidying code for mod dev data
+# source() this in corresponding analysis scripts.
+```
+
+```{r load libs}
+library(tidyverse)
+library(here)
+
+# load other libs if needed but this is usually all you need
+```
+
+```{r loading}
+# load data here
+df_import <- read.csv(here("_mod/data/clean/dev.csv"), header = TRUE)
+```
+
+# # futzing
+usually, standardising and pivoting done here. usually, name the r chunks
+
+
+```{r col futzing}
+# rename cols; generate trt binaries
+df_cleaned <- df_import %>%
+    rename(trt = treatment) %>%
+    mutate(
+      # trt binaries
+      trt.maxT = case_when(trt > 400 ~ 40,
+                           TRUE ~ 33),
+      trt.minT = as.numeric(str_sub(trt, 2)),
+      trt.meanT = (trt.maxT + trt.minT)/2,
+      trt.flucT = (trt.maxT - trt.minT)/2,
+      mass.change = mass.final - mass.initial,
+      
+      # dev binaries
+      # is.pup = case_when(!is.na(jdate.pupa) ~ 1,
+      #                    TRUE ~ 0),
+      
+      # dev time points
+      tt.3rd = jdate.3rd - jdate.hatch,
+      tt.4th = jdate.4th - jdate.hatch,
+      tt.5th = jdate.5th - jdate.hatch,
+      tt.wander = jdate.wander - jdate.hatch,
+      #tt.pupa = jdate.pupa - jdate.hatch,
+      tt.pmd = case_when(!is.na(jdate.transfer) ~ 
+                           jdate.pmd - jdate.transfer,
+                         TRUE ~ jdate.pmd - jdate.transfer),
+      ## TODO "tt exit = when pup or died?)
+    )
+
+
+```
+
+# # export
+prep for final export. just export as `df_tidy` so can be made available immediately by the sourcing script.
+
+```{r}
+dfs_tidy <- list(
+  wide = df_cleaned,
+  
+  long = df_cleaned %>%
+    pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
+                 names_to = c(".value", "instar"),
+                 values_drop_na = TRUE,
+                 names_pattern = ("([a-z]*\\d*)\\.(\\d*[a-z]*)"))
+)
+```
+
+
+## cleanup
+```{r cleanup}
+rm(df_import, df_cleaned)
+```
+

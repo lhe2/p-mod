@@ -1,0 +1,137 @@
+---
+title: "mod viz"
+data: "2026-05-10"
+---
+
+# preamble and loading
+
+```{r pathfinding}
+here::i_am("_mod/scripts/analysis-viz.Rmd")
+```
+
+```{r load libs}
+library(here)
+library(tidyverse)
+
+# library(patchwork) # for plot_layout
+# 
+# library(survival) # for fitting surv objects
+# library(survminer) # for plotting surv ojects
+
+source(here("_mod/scripts/wrangle.R"))
+```
+
+```{r load data}
+source(here("_mod/scripts/R/tidy.R"))
+
+dfs_tidy <- dfs_tidy %>%
+  lapply(., \(x){
+    x %>% mutate(across(starts_with("trt"), as.factor))
+  }
+         #mutate(across(starts_with("trt"), as.factor))
+         )
+```
+
+# development stuff
+
+## survival
+
+## pup growth
+
+```{r}
+# df prep
+
+df <- dfs_tidy$long %>%
+  filter(trt.type == "dev") %>%
+  PrepDevSS() %>%
+  filter(!(instar %in% c("change", "final", "initial", "transfer"))) %>%
+  mutate(instar = factor(instar, levels = c("pmd", "hatch", "2nd", "3rd", "4th", "5th", "wander"))) %>%
+  filter(!(instar %in% c("hatch", "pmd", "2nd", "wander")))
+
+```
+
+```{r}
+.plotfn <- function(x){
+  x %>%
+    ggplot(aes(col = trt.maxT, lty = trt.flucT,
+             group = interaction(trt.maxT, trt.flucT))) +
+    geom_point(aes(alpha = n),
+               size = 2) +
+  geom_line() +
+  scale_color_hue(direction = -1) +
+  theme_bw()
+}
+
+df %>%
+  .plotfn() +
+  aes(y = avg.mass, x = avg.tt,
+             shape = instar)
+
+
+df %>%
+  .plotfn() +
+  aes(y = avg.mass, x = instar,
+      shape = trt.flucT)
+
+df %>%
+  .plotfn() +
+  aes(y = avg.tt, x = instar,
+      shape = trt.flucT) +
+  geom_errorbar(aes(ymax = avg.tt + se.tt,
+                    ymin = avg.tt - se.tt,
+                    width = 0.1),
+                lty = "solid", show.legend = FALSE)
+
+
+```
+
+
+
+# tdt stuff
+```{r}
+# df prep
+df <- dfs_tidy$wide %>%
+  filter(trt.type == "tdt") %>%
+  PrepTDTSS()
+```
+
+```{r}
+df %>%
+  ggplot(aes(x = avg.delta, y = avg.exit,
+             col = trt.maxT, shape = trt.flucT)) +
+  geom_point(size = 2) +
+  geom_line() +
+  geom_errorbar(aes(ymax = avg.exit + se.exit,
+                    ymin = avg.exit - se.exit),
+                width = 5) +
+  # geom_errorbarh(aes(xmax = avg.delta + se.delta,
+  #                    xmin = avg.delta - se.delta)) +
+  scale_color_hue(direction = -1) +
+  theme_bw()
+
+# 2x2
+df %>%
+  ggplot(aes(y = avg.exit, x = trt.maxT,
+             col = trt.flucT, lty = trt.flucT, group = trt.flucT)) +
+  geom_point(size = 2) +
+  geom_line() +
+  geom_errorbar(aes(ymax = avg.exit + se.exit,
+                    ymin = avg.exit - se.exit),
+                width = 0.25
+                ) +
+  scale_color_hue(direction = -1) +
+  theme_bw()
+
+df %>%
+  ggplot(aes(y = avg.delta, x = trt.maxT,
+             col = trt.flucT, lty = trt.flucT, group = trt.flucT)) +
+  geom_point(size = 2) +
+  geom_line() +
+  geom_errorbar(aes(ymax = avg.delta + se.delta,
+                    ymin = avg.delta - se.delta),
+                width = 0.25
+                ) +
+  scale_color_hue(direction = -1) +
+  theme_bw()
+```
+
