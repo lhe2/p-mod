@@ -7,7 +7,7 @@ for importing + some pre-cleaning of modeling from googlesheets
 
 re-run sections whenever the gsheets gets updated
 
-LAST RUN: 2026-05-10
+LAST RUN: 2026-05-22
 
 # loading & init
 
@@ -45,13 +45,14 @@ df <- df %>%
 
 ## export
 ```{r}
-#today <- format(Sys.time(), "%y%m%d-%H%M")
+today <- format(Sys.time(), "%y%m%d-%H%M")
 
 # make a new "export" object
 export <- df %>%
-  select(-c(starts_with(c("h", "st", "time"))))
+  select(-c(starts_with(c("h", "time")), matches(".*\\.st"),
+            jdate.15))
 
-#write.csv(raw, file = paste0(here("_mod/data/raw/"), "dev", today, ".csv"), row.names = FALSE)
+write.csv(raw, file = paste0(here("_mod/data/raw/"), "dev", today, ".csv"), row.names = FALSE)
 write.csv(export, file = paste0(here("_mod/data/clean/"), "dev.csv"), row.names = FALSE)
 ```
 
@@ -59,5 +60,5 @@ write.csv(export, file = paste0(here("_mod/data/clean/"), "dev.csv"), row.names 
 ```{r}
 rm(today)
 
-rm(raw, df)
+rm(raw, df, export)
 ```

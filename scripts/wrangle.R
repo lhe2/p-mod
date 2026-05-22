@@ -11,16 +11,26 @@ source(here("scripts/math_utils.R"))
 
 PrepTDTSS <- function(wide_df){
   wide_df %>%
-    #filter(trt.type == "tdt") %>% # TODO do this here or elsewhere?
-    group_by(across(starts_with("trt"))) %>%
+    #filter(trt.type == "tdt") %>% 
+    select(c("cohort", starts_with("trt"), contains(c("pmd", "0h", "24h", "48h")))) %>%
+    pivot_longer(cols = ends_with(c("0h", "24h", "48h")),
+                 names_to = c(".value", "instar"),
+                 names_sep = "\\.") %>%
+    rename(exit = tt.pmd) %>%
+    group_by(across(c(starts_with("trt"), "instar", #"cohort" 
+                      ))) %>% 
     summarise(n = n(),
-              avg.delta = mean(mass.change, na.rm = TRUE),
-              se.delta = se(mass.change),
-              avg.exit = mean(tt.pmd, na.rm = TRUE),
-              se.exit = se(tt.pmd))
+              across(.cols = c(mass, dmass, rmass, exit),
+                     .fns = list(avg = ~ mean(.x, na.rm = TRUE),
+                                 se = se),
+                     .names = "{.fn}.{.col}")
+              # avg.delta = mean(mass.change, na.rm = TRUE),
+              # se.delta = se(mass.change),
+              # avg.exit = mean(tt.pmd, na.rm = TRUE),
+              # se.exit = se(tt.pmd)
+              ) %>%
+    ungroup()
 }
-
-
 
 # dev summaries -----------------------------------------------------------
 

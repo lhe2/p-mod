@@ -38,12 +38,23 @@ df_import <- read.csv(here("_mod/data/clean/dev.csv"), header = TRUE)
 ```
 
 # # futzing
-usually, standardising and pivoting done here. usually, name the r chunks
+```{r filtering and removing}
+df_filtered <- df_import %>%
+  # filter out early deaths
+  filter(#!(if.ignore == "lost"), # wip LOL
+         !(!is.na(jdate.pmd) & jdate.pmd - jdate.hatch < 3)
+         ) %>%
+  # drop day-of death masses (not accurate)
+  mutate(mass.24h = case_when(jdate.pmd == jdate.transfer + 1 ~ NA_real_,
+                              TRUE ~ mass.24h),
+         mass.48h = case_when(jdate.pmd == jdate.transfer + 2 ~ NA_real_,
+                              TRUE ~ mass.48h)
+         )
+```
 
-
-```{r col futzing}
+```{r col creation}
 # rename cols; generate trt binaries
-df_cleaned <- df_import %>%
+df_cleaned <- df_filtered %>%
     rename(trt = treatment) %>%
     mutate(
       # trt binaries
@@ -52,20 +63,27 @@ df_cleaned <- df_import %>%
       trt.minT = as.numeric(str_sub(trt, 2)),
       trt.meanT = (trt.maxT + trt.minT)/2,
       trt.flucT = (trt.maxT - trt.minT)/2,
-      mass.change = mass.final - mass.initial,
+      ## mass difference
+      dmass.24h = mass.24h - mass.0h,
+      dmass.48h = mass.48h - mass.24h,
+      ## mass ratio
+      rmass.24h = mass.24h/mass.0h,
+      rmass.48h = mass.48h/mass.24h,
       
       # dev binaries
-      # is.pup = case_when(!is.na(jdate.pupa) ~ 1,
-      #                    TRUE ~ 0),
-      
+      is.pup = case_when(!is.na(jdate.pupa) ~ 1,
+                         TRUE ~ 0),
+      is.sup = case_when(!is.na(jdate.6th) ~ 1,
+                         TRUE ~ 0),
+       
       # dev time points
       tt.3rd = jdate.3rd - jdate.hatch,
       tt.4th = jdate.4th - jdate.hatch,
       tt.5th = jdate.5th - jdate.hatch,
+      tt.6th = jdate.6th - jdate.hatch,
       tt.wander = jdate.wander - jdate.hatch,
-      #tt.pupa = jdate.pupa - jdate.hatch,
-      tt.pmd = case_when(!is.na(jdate.transfer) ~ 
-                           jdate.pmd - jdate.transfer,
+      tt.pupa = jdate.pupa - jdate.hatch,
+      tt.pmd = case_when(!is.na(jdate.transfer) ~ jdate.pmd - jdate.transfer,
                          TRUE ~ jdate.pmd - jdate.transfer),
       ## TODO "tt exit = when pup or died?)
     )
@@ -78,13 +96,15 @@ prep for final export. just export as `df_tidy` so can be made available immedia
 
 ```{r}
 dfs_tidy <- list(
-  wide = df_cleaned,
+  wide = df_cleaned %>%
+    select(-jdate.transfer),
   
   long = df_cleaned %>%
-    pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
+    pivot_longer(cols = starts_with(c("jdate", "mass", "tt", "dmass")),
                  names_to = c(".value", "instar"),
                  values_drop_na = TRUE,
-                 names_pattern = ("([a-z]*\\d*)\\.(\\d*[a-z]*)"))
+                 names_pattern = ("([a-z]*\\d*)\\.(\\d*[a-z]*)")) %>%
+    filter(instar != "transfer") # drop redundant pivots..
 )
 ```
 

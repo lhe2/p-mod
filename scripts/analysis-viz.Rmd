@@ -42,11 +42,12 @@ dfs_tidy <- dfs_tidy %>%
 # df prep
 
 df <- dfs_tidy$long %>%
-  filter(trt.type == "dev") %>%
+  filter(trt.type == "dev",
+         is.sup != 1) %>%
   PrepDevSS() %>%
-  filter(!(instar %in% c("change", "final", "initial", "transfer"))) %>%
-  mutate(instar = factor(instar, levels = c("pmd", "hatch", "2nd", "3rd", "4th", "5th", "wander"))) %>%
-  filter(!(instar %in% c("hatch", "pmd", "2nd", "wander")))
+  filter(!(instar %in% c("24d", "48d", "24h", "48h", "transfer"))) %>%
+  mutate(instar = factor(instar, levels = c("pmd", "hatch", "2nd", "3rd", "4th", "5th", "6th", "wander", "pupa"))) %>%
+  filter(!(instar %in% c("hatch", "pmd", "2nd", "wander", "pupa")))
 
 ```
 
@@ -54,34 +55,43 @@ df <- dfs_tidy$long %>%
 .plotfn <- function(x){
   x %>%
     ggplot(aes(col = trt.maxT, lty = trt.flucT,
-             group = interaction(trt.maxT, trt.flucT))) +
-    geom_point(aes(alpha = n),
+             group = interaction(trt.meanT, trt.flucT))) +
+    geom_point(#aes(alpha = n),
                size = 2) +
   geom_line() +
   scale_color_hue(direction = -1) +
   theme_bw()
 }
+```
+
+```{r}
+df %>%
+  .plotfn() +
+  aes(y = avg.logmass, x = avg.tt,
+      shape = instar) +
+  geom_errorbar(aes(ymax = avg.logmass + se.logmass,
+                    ymin = avg.logmass - se.logmass),
+                width = 0.2, lty = "solid", show.legend = FALSE) +
+  geom_errorbarh(aes(xmax = avg.tt + se.tt,
+                     xmin = avg.tt - se.tt),
+                 height = 0.1, lty = "solid", show.legend = FALSE)
+
 
 df %>%
   .plotfn() +
-  aes(y = avg.mass, x = avg.tt,
-             shape = instar)
-
-
-df %>%
-  .plotfn() +
-  aes(y = avg.mass, x = instar,
-      shape = trt.flucT)
+  aes(y = avg.logmass, x = instar,
+      shape = trt.flucT) +
+  geom_errorbar(aes(ymax = avg.logmass + se.logmass,
+                    ymin = avg.logmass - se.logmass),
+                width = 0.1, lty = "solid", show.legend = FALSE)
 
 df %>%
   .plotfn() +
   aes(y = avg.tt, x = instar,
       shape = trt.flucT) +
   geom_errorbar(aes(ymax = avg.tt + se.tt,
-                    ymin = avg.tt - se.tt,
-                    width = 0.1),
-                lty = "solid", show.legend = FALSE)
-
+                    ymin = avg.tt - se.tt),
+                width = 0.1, lty = "solid", show.legend = FALSE)
 
 ```
 
@@ -91,47 +101,103 @@ df %>%
 ```{r}
 # df prep
 df <- dfs_tidy$wide %>%
-  filter(trt.type == "tdt") %>%
+  filter(trt.type == "tdt",
+         #instar %in% c("0h", "24h", "48h", "pmd")
+         ) %>%
   PrepTDTSS()
 ```
 
 ```{r}
 df %>%
-  ggplot(aes(x = avg.delta, y = avg.exit,
+  filter(instar == "24h") %>%
+  ggplot(aes(x = avg.dmass, y = avg.exit,
+             #lty = cohort,
              col = trt.maxT, shape = trt.flucT)) +
   geom_point(size = 2) +
   geom_line() +
   geom_errorbar(aes(ymax = avg.exit + se.exit,
                     ymin = avg.exit - se.exit),
                 width = 5) +
-  # geom_errorbarh(aes(xmax = avg.delta + se.delta,
-  #                    xmin = avg.delta - se.delta)) +
+  # geom_errorbarh(aes(xmax = avg.dmass + se.dmass,
+  #                    xmin = avg.dmass - se.dmass)) +
   scale_color_hue(direction = -1) +
-  theme_bw()
+  theme_bw() +
+      labs(y = "days survived after transferring",
+       x = "mass diff. 24h after transferring")
 
 # 2x2
 df %>%
+  filter(instar == "24h") %>%
   ggplot(aes(y = avg.exit, x = trt.maxT,
+             #x = trt.meanT, shape = trt.maxT,
              col = trt.flucT, lty = trt.flucT, group = trt.flucT)) +
   geom_point(size = 2) +
+  #facet_wrap(~cohort) +
   geom_line() +
   geom_errorbar(aes(ymax = avg.exit + se.exit,
                     ymin = avg.exit - se.exit),
                 width = 0.25
                 ) +
   scale_color_hue(direction = -1) +
-  theme_bw()
+  theme_bw() +
+    labs(y = "days survived after transferring",
+       x = "max temp")
 
 df %>%
-  ggplot(aes(y = avg.delta, x = trt.maxT,
+  filter(instar == "24h") %>%
+  ggplot(aes(y = avg.dmass, x = trt.maxT,
+             #x = trt.meanT, shape = trt.maxT,
              col = trt.flucT, lty = trt.flucT, group = trt.flucT)) +
   geom_point(size = 2) +
   geom_line() +
-  geom_errorbar(aes(ymax = avg.delta + se.delta,
-                    ymin = avg.delta - se.delta),
+  #facet_wrap(~cohort) +
+  geom_errorbar(aes(ymax = avg.dmass + se.dmass,
+                    ymin = avg.dmass - se.dmass),
                 width = 0.25
                 ) +
   scale_color_hue(direction = -1) +
-  theme_bw()
+  theme_bw() +
+  labs(y = "mass diff. 24h after transferring",
+       x = "max temp")
+
+# some more
+df %>%
+  filter(instar %in% c("24h", "48h")) %>%
+  ggplot(aes(y = avg.dmass, x = instar,
+             shape = trt.maxT, col = trt.maxT, 
+             lty = trt.flucT, 
+             group = interaction(trt.flucT, trt.maxT))) +
+  geom_point(size = 2) +
+  geom_line() +
+  geom_errorbar(aes(ymax = avg.dmass + se.dmass,
+                    ymin = avg.dmass - se.dmass),
+                width = 0.25, lty = "solid", show.legend = FALSE
+                ) +
+  scale_color_hue(direction = -1) +
+  theme_bw() +
+  labs(y = "change in mass (mg)",
+       x = "h after transferring",
+       #col = "fluctuation", lty = "fluctuation",
+       #shape = "max temp"
+       )
+
+df %>%
+  filter(instar %in% c("24h", "48h")) %>%
+  ggplot(aes(y = avg.rmass, x = instar,
+             shape = trt.maxT, col = trt.maxT, 
+             lty = trt.flucT, 
+             group = interaction(trt.flucT, trt.maxT))) +
+  geom_point(size = 2) +
+  geom_line() +
+  geom_errorbar(aes(ymax = avg.rmass + se.rmass,
+                    ymin = avg.rmass - se.rmass),
+                width = 0.25, lty = "solid", show.legend = FALSE
+                ) +
+  scale_color_hue(direction = -1) +
+  scale_x_discrete(labels = c("24h" = "24:0", "48h" = "48:24")) +
+  theme_bw() +
+  labs(y = "mass ratio",
+       x = "final h:initial h"
+       )
 ```
 
