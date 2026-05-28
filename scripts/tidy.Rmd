@@ -40,9 +40,11 @@ df_import <- read.csv(here("_mod/data/clean/dev.csv"), header = TRUE)
 # # futzing
 ```{r filtering and removing}
 df_filtered <- df_import %>%
-  # filter out early deaths
+  # filter out early deaths, slow/wimpy 2nds/3rds
   filter(#!(if.ignore == "lost"), # wip LOL
-         !(!is.na(jdate.pmd) & jdate.pmd - jdate.hatch < 3)
+         !((!is.na(jdate.pmd) & is.na(jdate.3rd)) &
+             (jdate.pmd - jdate.hatch < 3 | jdate.pmd - jdate.2nd > 4)),
+         !(jdate.2nd - jdate.hatch > 4 | jdate.3rd - jdate.2nd > 4),
          ) %>%
   # drop day-of death masses (not accurate)
   mutate(mass.24h = case_when(jdate.pmd == jdate.transfer + 1 ~ NA_real_,
@@ -72,9 +74,10 @@ df_cleaned <- df_filtered %>%
       
       # dev binaries
       is.pup = case_when(!is.na(jdate.pupa) ~ 1,
-                         TRUE ~ 0),
+                         !is.na(jdate.LPI) ~ 2,
+                         !is.na(jdate.pmd) ~ 0),
       is.sup = case_when(!is.na(jdate.6th) ~ 1,
-                         TRUE ~ 0),
+                         is.na(jdate.6th) & is.pup > 0 ~ 0),
        
       # dev time points
       tt.3rd = jdate.3rd - jdate.hatch,
@@ -82,12 +85,12 @@ df_cleaned <- df_filtered %>%
       tt.5th = jdate.5th - jdate.hatch,
       tt.6th = jdate.6th - jdate.hatch,
       tt.wander = jdate.wander - jdate.hatch,
-      tt.pupa = jdate.pupa - jdate.hatch,
+      tt.pupa = case_when(!is.na(jdate.pupa) ~ jdate.pupa - jdate.hatch,
+                          !is.na(jdate.LPI) ~ jdate.LPI - jdate.hatch),
       tt.pmd = case_when(!is.na(jdate.transfer) ~ jdate.pmd - jdate.transfer,
                          TRUE ~ jdate.pmd - jdate.transfer),
       ## TODO "tt exit = when pup or died?)
     )
-
 
 ```
 
@@ -97,14 +100,14 @@ prep for final export. just export as `df_tidy` so can be made available immedia
 ```{r}
 dfs_tidy <- list(
   wide = df_cleaned %>%
-    select(-jdate.transfer),
+    select(-c(jdate.transfer, if.ignore)),
   
   long = df_cleaned %>%
-    pivot_longer(cols = starts_with(c("jdate", "mass", "tt", "dmass")),
+    pivot_longer(cols = starts_with(c("jdate", "mass", "tt", "dmass", "rmass")),
                  names_to = c(".value", "instar"),
                  values_drop_na = TRUE,
-                 names_pattern = ("([a-z]*\\d*)\\.(\\d*[a-z]*)")) %>%
-    filter(instar != "transfer") # drop redundant pivots..
+                 names_pattern = ("([a-z]*\\d*)\\.(\\d*[a-z|A-Z]*)")) %>%
+    filter(!(instar %in% c("transfer", "15")))
 )
 ```
 

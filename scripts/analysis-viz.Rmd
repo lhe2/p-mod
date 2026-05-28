@@ -19,6 +19,7 @@ library(tidyverse)
 # library(survminer) # for plotting surv ojects
 
 source(here("_mod/scripts/wrangle.R"))
+source(here("_mod/scripts/viz_utils.R"))
 ```
 
 ```{r load data}
@@ -26,45 +27,51 @@ source(here("_mod/scripts/R/tidy.R"))
 
 dfs_tidy <- dfs_tidy %>%
   lapply(., \(x){
-    x %>% mutate(across(starts_with("trt"), as.factor))
+    x %>% 
+      mutate(across(starts_with("trt"), as.factor))
   }
-         #mutate(across(starts_with("trt"), as.factor))
-         )
+  )
 ```
 
 # development stuff
 
 ## survival
 
-## pup growth
+
+## dev trajectories
 
 ```{r}
 # df prep
-
 df <- dfs_tidy$long %>%
-  filter(trt.type == "dev",
-         is.sup != 1) %>%
-  PrepDevSS() %>%
-  filter(!(instar %in% c("24d", "48d", "24h", "48h", "transfer"))) %>%
+  filter(#is.sup != 1 # or just NA this column if dgaf
+         ) %>%
+  CalcDevSS() %>%
+  filter(instar != "LPI") %>%
   mutate(instar = factor(instar, levels = c("pmd", "hatch", "2nd", "3rd", "4th", "5th", "6th", "wander", "pupa"))) %>%
-  filter(!(instar %in% c("hatch", "pmd", "2nd", "wander", "pupa")))
-
+  filter(!(instar %in% c("hatch", "pmd", "2nd")))
 ```
 
 ```{r}
 .plotfn <- function(x){
   x %>%
-    ggplot(aes(col = trt.maxT, lty = trt.flucT,
+    filter(!(instar %in% c("wander", "pupa"))) %>%
+    ggplot(aes(#col = trt.maxT, 
+               col = trt.meanT,
+               lty = trt.flucT,
              group = interaction(trt.meanT, trt.flucT))) +
     geom_point(#aes(alpha = n),
-               size = 2) +
+               size = 2.5) +
   geom_line() +
   scale_color_hue(direction = -1) +
-  theme_bw()
+  theme_bw() +
+    facet_wrap(~is.sup, labeller = as_labeller(c(`0` = "non-supernumerary",
+                                                 `1` = "supernumerary")),
+               scales = "free_x") +
+    labs(lty = "fluctuation", col = "mean temp") +
+    scale_color_manual(values = hcl.colors(4, "Roma", rev = TRUE))
 }
-```
 
-```{r}
+# dev trajectory
 df %>%
   .plotfn() +
   aes(y = avg.logmass, x = avg.tt,
@@ -74,39 +81,44 @@ df %>%
                 width = 0.2, lty = "solid", show.legend = FALSE) +
   geom_errorbarh(aes(xmax = avg.tt + se.tt,
                      xmin = avg.tt - se.tt),
-                 height = 0.1, lty = "solid", show.legend = FALSE)
+                 height = 0.1, lty = "solid", show.legend = FALSE) +
+  labs(y = "ln mass", x = "time to instar (days)",
+       shape= "instar")
 
 
+# mass vs instar
 df %>%
   .plotfn() +
   aes(y = avg.logmass, x = instar,
-      shape = trt.flucT) +
+      shape = trt.maxT) +
   geom_errorbar(aes(ymax = avg.logmass + se.logmass,
                     ymin = avg.logmass - se.logmass),
-                width = 0.1, lty = "solid", show.legend = FALSE)
+                width = 0.1, lty = "solid", show.legend = FALSE) +
+    labs(y = "ln mass", x = "instar",
+       shape= "max temp")
 
+# development rate vs instar
 df %>%
   .plotfn() +
-  aes(y = avg.tt, x = instar,
-      shape = trt.flucT) +
-  geom_errorbar(aes(ymax = avg.tt + se.tt,
-                    ymin = avg.tt - se.tt),
-                width = 0.1, lty = "solid", show.legend = FALSE)
+  aes(y = avg.devrate, x = instar,
+      shape = trt.maxT) +
+  geom_errorbar(aes(ymax = avg.devrate + se.devrate,
+                    ymin = avg.devrate - se.devrate),
+                width = 0.1, lty = "solid", show.legend = FALSE) +
+  labs(y = "development rate (1/days)", x = "instar", shape = "max temp")
 
 ```
 
 
 
 # tdt stuff
+
 ```{r}
 # df prep
 df <- dfs_tidy$wide %>%
-  filter(trt.type == "tdt",
-         #instar %in% c("0h", "24h", "48h", "pmd")
-         ) %>%
-  PrepTDTSS()
+  CalcTDTSS()
 ```
-
+## combined
 ```{r}
 df %>%
   filter(instar == "24h") %>%
@@ -122,82 +134,135 @@ df %>%
   #                    xmin = avg.dmass - se.dmass)) +
   scale_color_hue(direction = -1) +
   theme_bw() +
-      labs(y = "days survived after transferring",
-       x = "mass diff. 24h after transferring")
+  labs(y = "days survived after transferring",
+       x = "mass diff. 24h after transferring",
+       col = p_scales$lab_maxT,
+       shape = p_scales$lab_flucT)
+```
 
-# 2x2
+## exit time
+```{r}
 df %>%
-  filter(instar == "24h") %>%
+  #filter(instar == "24h") %>%
   ggplot(aes(y = avg.exit, x = trt.maxT,
              #x = trt.meanT, shape = trt.maxT,
-             col = trt.flucT, lty = trt.flucT, group = trt.flucT)) +
-  geom_point(size = 2) +
+             #col = trt.flucT, 
+              group = interaction(trt.flucT),
+             )) +
   #facet_wrap(~cohort) +
-  geom_line() +
+  geom_line(aes(lty = trt.flucT,)) +
   geom_errorbar(aes(ymax = avg.exit + se.exit,
                     ymin = avg.exit - se.exit),
-                width = 0.25
+                width = 0.25, lty = "solid", show.legend = FALSE
                 ) +
-  scale_color_hue(direction = -1) +
+  geom_point(aes(col = trt.meanT, 
+                 shape = trt.meanT),
+             size = 2.5) +
+  #scale_color_hue(direction = -1) +
+  #scale_color_brewer(palette = "Reds") +
+   scale_color_manual(values = hcl.colors(4, "Roma", rev = TRUE)) +
   theme_bw() +
-    labs(y = "days survived after transferring",
-       x = "max temp")
+  labs(y = "days survived after transfer to 40°C",
+       x = "maximum temperature (°C)",
+       #col = p_scales$lab_flucT,
+       col = "mean temp",
+       shape = "mean temperature (°C)",
+       lty = p_scales$lab_flucT)
+```
 
-df %>%
-  filter(instar == "24h") %>%
-  ggplot(aes(y = avg.dmass, x = trt.maxT,
-             #x = trt.meanT, shape = trt.maxT,
-             col = trt.flucT, lty = trt.flucT, group = trt.flucT)) +
-  geom_point(size = 2) +
-  geom_line() +
-  #facet_wrap(~cohort) +
-  geom_errorbar(aes(ymax = avg.dmass + se.dmass,
-                    ymin = avg.dmass - se.dmass),
-                width = 0.25
-                ) +
-  scale_color_hue(direction = -1) +
-  theme_bw() +
-  labs(y = "mass diff. 24h after transferring",
-       x = "max temp")
 
-# some more
+## mass change
+
+```{r}
+.plotfn <- function(x){
+  x %>%
+    filter(instar != "0h") %>%
+    ggplot(aes(x = trt.maxT,
+               #x = trt.meanT, shape = trt.maxT,
+               col = trt.flucT, lty = trt.flucT, #shape = trt.flucT,
+               shape = trt.meanT,
+               group = trt.flucT)) +
+    geom_point(size = 2) +
+    geom_line() +
+    #facet_wrap(~cohort) +
+    scale_color_hue(direction = -1) +
+    theme_bw() +
+    labs(x = "maximum temperature (°C)",
+         col = p_scales$lab_flucT,
+         lty = p_scales$lab_flucT,
+         shape = "mean temperature (°C)"
+         #shape = p_scales$lab_flucT
+    ) +
+    guides(shape = guide_legend(override.aes = list(color = c("#F8766D", "#00BFC4", "#F8766D", "#00BFC4"))))
+}
+
+# 2x2 by transfer day
 df %>%
-  filter(instar %in% c("24h", "48h")) %>%
-  ggplot(aes(y = avg.dmass, x = instar,
-             shape = trt.maxT, col = trt.maxT, 
-             lty = trt.flucT, 
-             group = interaction(trt.flucT, trt.maxT))) +
-  geom_point(size = 2) +
-  geom_line() +
+  .plotfn() +
+  aes(y = avg.dmass) +
   geom_errorbar(aes(ymax = avg.dmass + se.dmass,
                     ymin = avg.dmass - se.dmass),
                 width = 0.25, lty = "solid", show.legend = FALSE
-                ) +
-  scale_color_hue(direction = -1) +
-  theme_bw() +
-  labs(y = "change in mass (mg)",
-       x = "h after transferring",
-       #col = "fluctuation", lty = "fluctuation",
-       #shape = "max temp"
-       )
+  ) +
+  facet_wrap(~instar, labeller = as_labeller(c(`24h` =  "24h after transfer to 40°C",
+                                               `48h` =  "48h after transfer to 40°C"))) +
+  labs(y = "mass difference (mg)")
+  
+
 
 df %>%
-  filter(instar %in% c("24h", "48h")) %>%
-  ggplot(aes(y = avg.rmass, x = instar,
-             shape = trt.maxT, col = trt.maxT, 
-             lty = trt.flucT, 
-             group = interaction(trt.flucT, trt.maxT))) +
-  geom_point(size = 2) +
-  geom_line() +
+  .plotfn() +
+  aes(y = avg.rmass) +
   geom_errorbar(aes(ymax = avg.rmass + se.rmass,
                     ymin = avg.rmass - se.rmass),
                 width = 0.25, lty = "solid", show.legend = FALSE
                 ) +
-  scale_color_hue(direction = -1) +
-  scale_x_discrete(labels = c("24h" = "24:0", "48h" = "48:24")) +
-  theme_bw() +
-  labs(y = "mass ratio",
-       x = "final h:initial h"
-       )
+  facet_wrap(~instar, labeller = as_labeller(c(`24h` =  "24h:0h after transfer to 40°C",
+                                               `48h` =  "48h:24h after transfer to 40°C"))) +
+  labs(y = "mass ratio")
 ```
+
+```{r}
+.plotfn <- function(x){
+  x %>%
+    filter(instar %in% c("24h", "48h")) %>%
+    ggplot(aes(x = instar,
+               #shape = trt.maxT, 
+               shape = trt.meanT,
+               col = trt.maxT, 
+               lty = trt.flucT, 
+               group = interaction(trt.flucT, trt.maxT))) +
+    geom_point(size = 2) +
+    geom_line() +
+    scale_color_hue(direction = -1) +
+    theme_bw() +
+    labs(#col = "fluctuation", lty = "fluctuation",
+      #shape = "max temp",
+      #shape = p_scales$lab_maxT,
+      shape = "mean temperature (°C)",
+      col = p_scales$lab_maxT,
+      lty = p_scales$lab_flucT
+    )
+}
+
+# 0:24 vs 24:48
+df %>%
+  .plotfn() +
+  aes(y = avg.dmass) +
+  geom_errorbar(aes(ymax = avg.dmass + se.dmass,
+                    ymin = avg.dmass - se.dmass),
+                width = 0.25, lty = "solid", show.legend = FALSE
+                ) +
+  labs(y = "change in mass (mg)",
+       x = "h after transfer to 40°C",)
+
+df %>%
+  .plotfn() +
+  aes(y = avg.rmass) +
+  geom_errorbar(aes(ymax = avg.rmass + se.rmass,
+                    ymin = avg.rmass - se.rmass),
+                width = 0.25, lty = "solid", show.legend = FALSE
+                )
+```
+
 
