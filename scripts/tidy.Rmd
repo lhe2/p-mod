@@ -10,9 +10,9 @@ prepping modeling wrangling
 final code is purled to a `.R` script, rerun `purl` step as needed to update the wrangling for analyses
 
 ```{r for purling, eval=FALSE, include=FALSE, purl=FALSE}
-here::i_am("_mod/scripts/tidy.Rmd") # set wd
+here::i_am("scripts/tidy.Rmd") # set wd
 
-knitr::purl("tidy.Rmd", here::here("_mod/scripts/R/tidy.R")) # purl current script
+knitr::purl("tidy.Rmd", here::here("scripts/R/tidy.R")) # purl current script
   # save and apply updates to current .Rmd before purling!
 ```
 
@@ -34,7 +34,7 @@ library(here)
 
 ```{r loading}
 # load data here
-df_import <- read.csv(here("_mod/data/clean/dev.csv"), header = TRUE)
+df_import <- read.csv(here("data/clean/dev.csv"), header = TRUE)
 ```
 
 # # futzing

@@ -7,7 +7,7 @@ for importing + some pre-cleaning of modeling from googlesheets
 
 re-run sections whenever the gsheets gets updated
 
-LAST RUN: 2026-05-22
+LAST RUN: 2026-05-26
 
 # loading & init
 
@@ -18,7 +18,7 @@ library(googlesheets4)
 #library(lubridate) # for time stuff
 #conflicts_prefer(dplyr::filter) # if necessary
 
-here::i_am("_mod/scripts/import.Rmd")
+here::i_am("scripts/import.Rmd")
 library(here)
 ```
 
@@ -52,8 +52,8 @@ export <- df %>%
   select(-c(starts_with(c("h", "time")), matches(".*\\.st"),
             jdate.15))
 
-write.csv(raw, file = paste0(here("_mod/data/raw/"), "dev", today, ".csv"), row.names = FALSE)
-write.csv(export, file = paste0(here("_mod/data/clean/"), "dev.csv"), row.names = FALSE)
+write.csv(raw, file = paste0(here("data/raw/"), "dev", today, ".csv"), row.names = FALSE)
+write.csv(export, file = paste0(here("data/clean/"), "dev.csv"), row.names = FALSE)
 ```
 
 ## cleanup
