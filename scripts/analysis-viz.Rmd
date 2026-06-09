@@ -9,11 +9,10 @@ data: "2026-05-10"
 here::i_am("scripts/analysis-viz.Rmd")
 ```
 
-```{r load libs}
+```{r load libs and utils}
 library(here)
 library(tidyverse)
-
-# library(patchwork) # for plot_layout
+library(patchwork) # for plot_layout
 # 
 # library(survival) # for fitting surv objects
 # library(survminer) # for plotting surv ojects
@@ -23,6 +22,7 @@ source(here("scripts/viz_utils.R"))
 ```
 
 ```{r load data}
+# data
 source(here("scripts/R/tidy.R"))
 
 dfs_tidy <- dfs_tidy %>%
@@ -33,28 +33,119 @@ dfs_tidy <- dfs_tidy %>%
   )
 ```
 
-# development stuff
+# development
+
+## plot fns
+
+```{r}
+# plot development variants
+PlotDevVars <- function(x){
+  x %>%
+    ggplot(aes(shape = trt.maxT, fill = trt.flucT,
+               lty = trt.flucT, #color = trt.meanT,
+               group = trt.flucT,)) +
+    geom_point(size = 2) +
+    #geom_line() +
+    # geom_errorbar(aes(ymax = avg.exit + se.exit,
+    #                 ymin = avg.exit - se.exit),
+    #               width = 0.25, lty = "solid", show.legend = FALSE) +
+    # geom_text(aes(label = n),
+    #           vjust = -0.2, hjust = -0.3,
+    #           show.legend = FALSE) +
+    scale_shape_manual(values = c(`33` = 21, `40` = 24)) +
+    scale_fill_manual(values = c(`3.5` = "white", `7` = "black")) +
+    guides(shape = guide_legend(override.aes = list(shape = c(16, 17))),
+           fill = guide_legend(override.aes = list(shape = c(1, 16)))) +
+    #scale_color_manual(values = hcl.colors(4, "Roma", rev = TRUE)) +
+    labs(#lty = "fluctuation (°C)",
+         shape = "max temp",
+         fill = "fluct temp",
+        # color = "mean temp"
+    ) +
+    theme_bw()
+}
+```
 
 ## survival
+```{r}
+# try to visualise w different axes...
+df <- dfs_tidy$wide %>%
+  CalcSurvSS()
+
+.plotfn <- function(x){
+  x %>%
+    ggplot(aes(y = prop.pup, 
+               shape = trt.maxT, fill = trt.flucT,
+               lty = trt.flucT, #color = trt.meanT,
+               group = trt.flucT,)) +
+    geom_point(size = 2) +
+    #geom_line() +
+    geom_errorbar(aes(ymax = prop.pup + se.pup,
+                      ymin = prop.pup - se.pup),
+                  width = 0.25, lty = "solid", show.legend = FALSE) +
+    geom_text(aes(label = n),
+              vjust = -0.2, hjust = -0.3,
+              show.legend = FALSE) +
+    scale_shape_manual(values = c(`33` = 21, `40` = 24)) +
+    scale_fill_manual(values = c(`3.5` = "white", `7` = "black")) +
+    guides(shape = guide_legend(override.aes = list(shape = c(16, 17))),
+           fill = guide_legend(override.aes = list(shape = c(1, 16)))) +
+    #scale_color_manual(values = hcl.colors(4, "Roma", rev = TRUE)) +
+    labs(y = "proportion survived",
+         #lty = "fluctuation (°C)",
+         shape = "max temp",
+         fill = "fluct temp",
+        # color = "mean temp"
+    ) +
+    theme_bw()
+}
+
+p <- list(
+  p1 = df %>%
+    .plotfn() +
+    aes(x = trt.maxT) +
+    labs(x = "max temp (°C)"),
+  
+  p2 = df %>%
+    .plotfn() +
+    aes(x = trt.minT) +
+    labs(x = "min temp (°C)"),
+  
+  
+  p3 = df %>%
+    .plotfn() +
+    aes(x = trt.meanT) +
+    labs(x = "mean temp (°C)")
+)
+
+p$p1 + p$p2 + p$p3 +
+  plot_layout(axes = "collect", guides = "collect",
+              widths = c(1, 1.5, 2)) &
+  theme(legend.position = "bottom")
+
+```
+
 
 
 ## dev trajectories
 
 ```{r}
-# df prep
+# plots avgs; incls pmds
 df <- dfs_tidy$long %>%
   filter(#is.sup != 1 # or just NA this column if dgaf
          ) %>%
+  group_by(is.sup) %>%
   CalcDevSS() %>%
-  filter(instar != "LPI") %>%
-  mutate(instar = factor(instar, levels = c("pmd", "hatch", "2nd", "3rd", "4th", "5th", "6th", "wander", "pupa"))) %>%
+  filter(trt.type == "dev",
+         instar != "LPI",
+         !is.na(is.sup) # is.na(is.sup) = things that died < 5
+         ) %>%
+  mutate(instar = factor(instar, levels = c("pmd", "hatch", "2nd", "3rd", "4th", "5th", "6th", "wander", "pupa", "eclose"))) %>%
   filter(!(instar %in% c("hatch", "pmd", "2nd")))
-```
 
-```{r}
 .plotfn <- function(x){
   x %>%
-    filter(!(instar %in% c("wander", "pupa"))) %>%
+    filter(!(instar %in% c("wander", "pupa", "eclose"))) %>%
     ggplot(aes(#col = trt.maxT, 
                col = trt.meanT,
                lty = trt.flucT,
@@ -100,12 +191,13 @@ df %>%
 # development rate vs instar
 df %>%
   .plotfn() +
-  aes(y = avg.devrate, x = instar,
+  aes(y = avg.tt, x = instar,
       shape = trt.maxT) +
-  geom_errorbar(aes(ymax = avg.devrate + se.devrate,
-                    ymin = avg.devrate - se.devrate),
+  geom_errorbar(aes(ymax = avg.tt + se.tt,
+                    ymin = avg.tt - se.tt),
                 width = 0.1, lty = "solid", show.legend = FALSE) +
-  labs(y = "development rate (1/days)", x = "instar", shape = "max temp")
+  labs(y = "time (days)", x = "instar", shape = "max temp")
+```
 
 ```
 
@@ -118,7 +210,8 @@ df %>%
 df <- dfs_tidy$wide %>%
   CalcTDTSS()
 ```
-## combined
+
+## combined mass/time
 ```{r}
 df %>%
   filter(instar == "24h") %>%
@@ -142,6 +235,7 @@ df %>%
 
 ## exit time
 ```{r}
+# one fig
 df %>%
   #filter(instar == "24h") %>%
   ggplot(aes(y = avg.exit, x = trt.maxT,
@@ -169,6 +263,63 @@ df %>%
        shape = "mean temperature (°C)",
        lty = p_scales$lab_flucT)
 ```
+
+```{r}
+.plotfn <- function(x){
+  x %>%
+    filter(trt.type == "tdt",
+           instar == "0h" # drop dups
+           ) %>%
+    ggplot(aes(y = avg.exit, 
+               shape = trt.maxT, fill = trt.flucT,
+               lty = trt.flucT, #color = trt.meanT,
+               group = trt.flucT,)) +
+    geom_point(size = 2) +
+    #geom_line() +
+    geom_errorbar(aes(ymax = avg.exit + se.exit,
+                    ymin = avg.exit - se.exit),
+                  width = 0.25, lty = "solid", show.legend = FALSE) +
+    geom_text(aes(label = n),
+              vjust = -0.2, hjust = -0.3,
+              show.legend = FALSE) +
+    scale_shape_manual(values = c(`33` = 21, `40` = 24)) +
+    scale_fill_manual(values = c(`3.5` = "white", `7` = "black")) +
+    guides(shape = guide_legend(override.aes = list(shape = c(16, 17))),
+           fill = guide_legend(override.aes = list(shape = c(1, 16)))) +
+    #scale_color_manual(values = hcl.colors(4, "Roma", rev = TRUE)) +
+    labs(y = "days to exit (from transfer)",
+         #lty = "fluctuation (°C)",
+         shape = "max temp",
+         fill = "fluct temp",
+        # color = "mean temp"
+    ) +
+    theme_bw()
+}
+
+p <- list(
+  p1 = df %>%
+    .plotfn() +
+    aes(x = trt.maxT) +
+    labs(x = "max temp (°C)"),
+  
+  p2 = df %>%
+    .plotfn() +
+    aes(x = trt.minT) +
+    labs(x = "min temp (°C)"),
+  
+  
+  p3 = df %>%
+    .plotfn() +
+    aes(x = trt.meanT) +
+    labs(x = "mean temp (°C)")
+)
+
+p$p1 + p$p2 + p$p3 +
+  plot_layout(axes = "collect", guides = "collect",
+              widths = c(1, 1.5, 2)) &
+  theme(legend.position = "bottom")
+```
+
 
 
 ## mass change

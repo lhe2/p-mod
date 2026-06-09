@@ -82,6 +82,10 @@ df_cleaned <- df_filtered %>%
                          is.na(jdate.6th) & is.pup > 0 ~ 0),
        
       # dev time points
+      ## tdt
+      tt.0h = jdate.transfer - jdate.hatch,
+      tt.24h = tt.0h + 1,
+      tt.48h = tt.0h + 2,
       ## dev
       tt.3rd = jdate.3rd - jdate.hatch,
       tt.4th = jdate.4th - jdate.hatch,
