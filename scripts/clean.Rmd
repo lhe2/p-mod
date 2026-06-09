@@ -11,7 +11,6 @@ re-run whenever the gsheets gets updated
 
 ```{r message = FALSE}
 library(tidyverse)
-library(googlesheets4)
 
 #library(lubridate) # for time stuff
 #conflicts_prefer(dplyr::filter) # if necessary
@@ -21,7 +20,7 @@ library(here)
 ```
 
 ```{r}
-raw <- read.csv(here("data/raw/gsheets-import.csv"))
+raw <- read.csv(here("data/gsheets-import.csv"))
 
 df <- raw
 ```
@@ -44,8 +43,9 @@ today <- format(Sys.time(), "%y%m%d-%H%M")
 
 # make a new "export" object
 export <- df %>%
-  select(-c(starts_with(c("h", "time")), matches(".*\\.st"),
-            jdate.15))
+  select(-c(starts_with(c("h", "time", "notes")), matches(".*\\.st"),
+            jdate.cup, jdate.10, jdate.15, jdate.to25
+            ))
 
 write.csv(raw, file = paste0(here("data/raw/"), "dev", today, ".csv"), row.names = FALSE)
 write.csv(export, file = paste0(here("data/clean/"), "dev.csv"), row.names = FALSE)

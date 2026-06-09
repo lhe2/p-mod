@@ -46,11 +46,13 @@ df_filtered <- df_import %>%
              (jdate.pmd - jdate.hatch < 3 | jdate.pmd - jdate.2nd > 4)),
          !(jdate.2nd - jdate.hatch > 4 | jdate.3rd - jdate.2nd > 4),
          ) %>%
-  # drop day-of death masses (not accurate)
+  # drop LPI/day-of death masses (not accurate)
   mutate(mass.24h = case_when(jdate.pmd == jdate.transfer + 1 ~ NA_real_,
                               TRUE ~ mass.24h),
          mass.48h = case_when(jdate.pmd == jdate.transfer + 2 ~ NA_real_,
-                              TRUE ~ mass.48h)
+                              TRUE ~ mass.48h),
+         mass.pupa = case_when(!is.na(jdate.LPI) ~ NA_real_,
+                               TRUE ~ mass.pupa)
          )
 ```
 
@@ -80,6 +82,7 @@ df_cleaned <- df_filtered %>%
                          is.na(jdate.6th) & is.pup > 0 ~ 0),
        
       # dev time points
+      ## dev
       tt.3rd = jdate.3rd - jdate.hatch,
       tt.4th = jdate.4th - jdate.hatch,
       tt.5th = jdate.5th - jdate.hatch,
@@ -87,8 +90,9 @@ df_cleaned <- df_filtered %>%
       tt.wander = jdate.wander - jdate.hatch,
       tt.pupa = case_when(!is.na(jdate.pupa) ~ jdate.pupa - jdate.hatch,
                           !is.na(jdate.LPI) ~ jdate.LPI - jdate.hatch),
-      tt.pmd = case_when(!is.na(jdate.transfer) ~ jdate.pmd - jdate.transfer,
-                         TRUE ~ jdate.pmd - jdate.transfer),
+      tt.eclose = jdate.eclose - jdate.pupa,
+      tt.pmd = case_when(!is.na(jdate.transfer) ~ jdate.pmd - jdate.transfer, # tdt
+                         TRUE ~ jdate.pmd - jdate.hatch), # dev
       ## TODO "tt exit = when pup or died?)
     )
 
@@ -107,7 +111,7 @@ dfs_tidy <- list(
                  names_to = c(".value", "instar"),
                  values_drop_na = TRUE,
                  names_pattern = ("([a-z]*\\d*)\\.(\\d*[a-z|A-Z]*)")) %>%
-    filter(!(instar %in% c("transfer", "15")))
+    filter(!(instar %in% c("transfer", "10", "15", "cup", "to25")))
 )
 ```
 

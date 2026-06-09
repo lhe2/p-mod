@@ -11,7 +11,8 @@ source(here("scripts/math_utils.R"))
 CalcDevSS <- function(long_df){
   long_df %>%
     filter(trt.type == "dev") %>%
-    group_by(across(c(starts_with("trt"), instar, is.sup))) %>%
+    group_by(across(c(starts_with("trt"), instar, #is.sup
+                      )), .add = TRUE) %>%
     mutate(logmass = log(mass),
            # mass = case_when(instar %in% c("pupa", "eclose") ~ mass/1000,
            #                  TRUE ~ mass),
@@ -29,7 +30,7 @@ CalcDevSS <- function(long_df){
 CalcSurvSS <- function(wide_df){
   wide_df %>%
     filter(trt.type == "dev") %>%
-    group_by(across(starts_with("trt"))) %>%
+    group_by(across(starts_with("trt")), .add = TRUE) %>%
     summarise(n = n(),
               prop.pup = sum(is.pup > 0)/n,
               se.pup = seprop(prop.pup, n)) %>%
@@ -41,7 +42,7 @@ CalcOutcomesSS <- function(wide_df){
     filter(trt.type == "dev",
            !is.na(is.pup) # omit in-progress bugs
            ) %>%
-    group_by(across(starts_with(c("trt")))) %>%
+    group_by(across(starts_with(c("trt"))), .add = TRUE) %>%
     summarise(tot_N = n(),
               N_pmd = sum(is.pup == 0 #& is.sup == 0
                           , na.rm = TRUE),
@@ -97,8 +98,9 @@ CalcTDTSS <- function(wide_df){
                  names_sep = "\\.") %>%
     rename(exit = tt.pmd) %>%
     # TODO group by cohort?
-    group_by(across(c(starts_with("trt"), "instar", #"cohort" 
-    ))) %>% 
+    group_by(across(c(starts_with("trt"), "instar", #"cohort"
+                      )),
+             .add = TRUE) %>% 
     summarise(n = n(),
               across(.cols = c(mass, dmass, rmass, exit),
                      .fns = list(avg = ~ mean(.x, na.rm = TRUE),
