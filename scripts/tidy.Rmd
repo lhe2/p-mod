@@ -79,7 +79,12 @@ df_cleaned <- df_filtered %>%
                          !is.na(jdate.LPI) ~ 2,
                          !is.na(jdate.pmd) ~ 0),
       is.sup = case_when(!is.na(jdate.6th) ~ 1,
-                         is.na(jdate.6th) & is.pup > 0 ~ 0),
+                         is.na(jdate.6th) & !is.na(jdate.wander) ~ 0),
+      is.ec = case_when(!is.na(jdate.eclose) ~ 1,
+                        # !is.na(jdate.pupa) & 
+                        #   (is.na(jdate.eclose) | !is.na(jdate.ppd)) ~ 0,
+                        !is.na(jdate.LPI) ~ NA_real_
+                        ),
        
       # dev time points
       ## tdt

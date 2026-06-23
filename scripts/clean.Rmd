@@ -44,7 +44,10 @@ today <- format(Sys.time(), "%y%m%d-%H%M")
 # make a new "export" object
 export <- df %>%
   select(-c(starts_with(c("h", "time", "notes")), matches(".*\\.st"),
-            jdate.cup, jdate.10, jdate.15, jdate.to25
+            #if.ignore,
+            jdate.cup, jdate.10, jdate.15, jdate.to25,
+            jdate.ppd, 
+            # TODO deal w these later
             ))
 
 write.csv(raw, file = paste0(here("data/raw/"), "dev", today, ".csv"), row.names = FALSE)

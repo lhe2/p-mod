@@ -345,7 +345,8 @@ dfs_tidy$wide %>%
 df <- dfs_tidy$long %>%
   #filter(trt.type == "dev") %>%
   CalcDevSS() %>%
-  filter(instar %in% c("5th", "pupa"))
+  filter(instar %in% c("5th", "pupa", "eclose")) %>%
+  mutate(instar = factor(instar, levels = c("5th", "pupa", "eclose")))
 
 .plotfn <- function(x){
   x %>% PlotDevVars() +
@@ -389,21 +390,23 @@ p$p1 + p$p2 + p$p3 +
               widths = c(1, 1.5, 2)) &
   theme(legend.position = "bottom")
 ```
+
 ## time to instar
 ```{r}
 df <- dfs_tidy$long %>%
   #filter(trt.type == "dev") %>%
   CalcDevSS() %>%
-  filter(instar %in% c("5th", "pupa"))
+  filter(instar %in% c("5th", "pupa", "eclose")) %>%
+  mutate(instar = factor(instar, levels = c("5th", "pupa", "eclose")))
 
 .plotfn <- function(x){
   x %>% PlotDevVars() +
   list(
-    aes(y = avg.devrate),
-    geom_errorbar(aes(ymax = avg.devrate + se.devrate,
-                      ymin = avg.devrate - se.devrate),
+    aes(y = avg.tt),
+    geom_errorbar(aes(ymax = avg.tt + se.tt,
+                      ymin = avg.tt - se.tt),
                   width = 0.5, lty = "solid", show.legend = FALSE),
-    labs(y = "dev rate (1/days)"),
+    labs(y = "duration (days)"),
     facet_grid(instar ~ ., scales = "free_y")
   )
 }
