@@ -14,27 +14,43 @@ CalcDevSS <- function(long_df){
     group_by(across(c(starts_with("trt"), instar, #is.sup
                       )), .add = TRUE) %>%
     mutate(logmass = log(mass),
+           mass_g = mass/1000,
            # mass = case_when(instar %in% c("pupa", "eclose") ~ mass/1000,
            #                  TRUE ~ mass),
            devrate = 1/tt
            ) %>%
     summarise(n = n(),
-              across(.cols = c(mass, logmass, tt, devrate),
+              across(.cols = c(mass, mass_g, logmass, tt, devrate),
                      .fns = list(avg = ~ mean(.x, na.rm = TRUE),
                                  se = se),
                      .names = "{.fn}.{.col}")
               ) %>%
-    ungroup()
+    ungroup() %>%
+    pivot_longer(starts_with(c("avg.", "se.")),
+                 names_to = c(".value", "response"),
+                 names_sep = "\\.")
 }
 
 CalcSurvSS <- function(wide_df){
   wide_df %>%
     filter(trt.type == "dev") %>%
     group_by(across(starts_with("trt")), .add = TRUE) %>%
-    summarise(n = n(),
-              prop.pup = sum(is.pup > 0)/n,
-              se.pup = seprop(prop.pup, n)) %>%
-    ungroup()
+    summarise(n.pup = n(),
+              n.ec = sum(is.pup == 1), # TODO: omit the pupae that got moved?
+              prop.pup = sum(is.pup > 0)/n.pup,
+              se.pup = seprop(prop.pup, n.pup),
+              prop.ec = sum(is.ec == 1, na.rm = TRUE)/n.pup,
+              se.ec = seprop(prop.ec, n.pup)) %>%
+    ungroup() %>%
+    pivot_longer(cols = starts_with(c("n.", "prop.", "se.")),
+                 names_to = c(".value", "instar"),
+                 names_sep = "\\.") %>%
+    mutate(instar = factor(instar, levels = c("pup", "ec")),
+           
+           # drop data pts for prop ec where 0 pupa survived
+           across(c("prop", "se"), ~ case_when(instar == "ec" & trt == 433 ~ NA_real_,
+                                               TRUE ~ as.numeric(.x)))
+           ) 
 }
 
 CalcOutcomesSS <- function(wide_df){

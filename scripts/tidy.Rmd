@@ -83,7 +83,8 @@ df_cleaned <- df_filtered %>%
       is.ec = case_when(!is.na(jdate.eclose) ~ 1,
                         # !is.na(jdate.pupa) & 
                         #   (is.na(jdate.eclose) | !is.na(jdate.ppd)) ~ 0,
-                        !is.na(jdate.LPI) ~ NA_real_
+                        #!is.na(jdate.LPI) ~ NA_real_,
+                        !is.na(jdate.pupa) & is.na(jdate.eclose) ~ 0
                         ),
        
       # dev time points
