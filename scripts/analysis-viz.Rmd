@@ -41,7 +41,8 @@ dfs_tidy <- dfs_tidy %>%
 # plot development variants
 PlotDevVars <- function(x){
   x %>%
-    ggplot(aes(shape = trt.maxT, fill = trt.flucT,
+    ggplot(aes(#shape = trt.maxT, fill = trt.flucT,
+               fill = trt.maxT, shape = trt.flucT,
                lty = trt.flucT, #color = trt.meanT,
                group = trt.flucT,)) +
     geom_point(size = 2) +
@@ -52,16 +53,29 @@ PlotDevVars <- function(x){
     # geom_text(aes(label = n),
     #           vjust = -0.2, hjust = -0.3,
     #           show.legend = FALSE) +
-    scale_shape_manual(values = c(`33` = 21, `40` = 24)) +
-    scale_fill_manual(values = c(`3.5` = "white", `7` = "black")) +
+    
+    ### if fill = maxT, shape = flucT ###
+    scale_shape_manual(values = c(`3.5` = 21, `7` = 24)) +
+    scale_fill_manual(values = c(`33` = "white", `40` = "black")) +
     guides(shape = guide_legend(override.aes = list(shape = c(16, 17))),
            fill = guide_legend(override.aes = list(shape = c(1, 16)))) +
-    #scale_color_manual(values = hcl.colors(4, "Roma", rev = TRUE)) +
-    labs(#lty = "fluctuation (°C)",
-         shape = "max temp",
-         fill = "fluct temp",
-        # color = "mean temp"
+    labs(fill = "max temp", shape = "fluct temp",
     ) +
+    ###
+    
+    # ### if shape = maxT, fill = flucT ###
+    # scale_shape_manual(values = c(`33` = 21, `40` = 24)) +
+    # scale_fill_manual(values = c(`3.5` = "white", `7` = "black")) +
+    # guides(shape = guide_legend(override.aes = list(shape = c(16, 17))),
+    #        fill = guide_legend(override.aes = list(shape = c(1, 16)))) +
+    # #scale_color_manual(values = hcl.colors(4, "Roma", rev = TRUE)) +
+    # labs(#lty = "fluctuation (°C)",
+    #      shape = "max temp",
+    #      fill = "fluct temp",
+    #     # color = "mean temp"
+    # ) +
+    # ###
+    
     theme_bw()
 }
 ```
@@ -96,8 +110,8 @@ df <- dfs_tidy$wide %>%
 
 .plotfn <- function(x){
   x %>%
-    ggplot(aes(y = prop.pup, 
-               shape = trt.maxT, fill = trt.flucT,
+    ggplot(aes(y = prop, 
+               fill = trt.maxT, shape = trt.flucT,
                lty = trt.flucT, #color = trt.meanT,
                group = trt.flucT,)) +
     geom_point(size = 2) +
@@ -108,15 +122,15 @@ df <- dfs_tidy$wide %>%
     geom_text(aes(label = n),
               vjust = -0.2, hjust = -0.3,
               show.legend = FALSE) +
-    scale_shape_manual(values = c(`33` = 21, `40` = 24)) +
-    scale_fill_manual(values = c(`3.5` = "white", `7` = "black")) +
+    scale_shape_manual(values = c(`3.5` = 21, `7` = 24)) +
+    scale_fill_manual(values = c(`33` = "white", `40` = "black")) +
     guides(shape = guide_legend(override.aes = list(shape = c(16, 17))),
            fill = guide_legend(override.aes = list(shape = c(1, 16)))) +
     #scale_color_manual(values = hcl.colors(4, "Roma", rev = TRUE)) +
     labs(y = "proportion survived",
          #lty = "fluctuation (°C)",
-         shape = "max temp",
-         fill = "fluct temp",
+         shape = "fluct temp",
+         fill = "max temp",
         # color = "mean temp"
     ) +
     theme_bw()
@@ -512,7 +526,7 @@ df %>%
            instar == "0h" # drop dups
            ) %>%
     ggplot(aes(y = avg.exit, 
-               shape = trt.maxT, fill = trt.flucT,
+               fill = trt.maxT, shape = trt.flucT,
                lty = trt.flucT, #color = trt.meanT,
                group = trt.flucT,)) +
     geom_point(size = 2) +
@@ -523,15 +537,15 @@ df %>%
     geom_text(aes(label = n),
               vjust = -0.2, hjust = -0.3,
               show.legend = FALSE) +
-    scale_shape_manual(values = c(`33` = 21, `40` = 24)) +
-    scale_fill_manual(values = c(`3.5` = "white", `7` = "black")) +
+    scale_shape_manual(values = c(`3.5` = 21, `7` = 24)) +
+    scale_fill_manual(values = c(`33` = "white", `40` = "black")) +
     guides(shape = guide_legend(override.aes = list(shape = c(16, 17))),
            fill = guide_legend(override.aes = list(shape = c(1, 16)))) +
     #scale_color_manual(values = hcl.colors(4, "Roma", rev = TRUE)) +
     labs(y = "days to exit (from transfer)",
          #lty = "fluctuation (°C)",
-         shape = "max temp",
-         fill = "fluct temp",
+         fill = "max temp",
+         shape = "fluct temp",
         # color = "mean temp"
     ) +
     theme_bw()
@@ -689,7 +703,7 @@ dfs_tidy$wide %>%
 dfs_tidy$wide %>%
   CalcTDTSS() %>%
   ggplot(aes(y = avg.mass, x = instar,
-               shape = trt.maxT, fill = trt.flucT,
+               fill = trt.maxT, shape = trt.flucT,
                lty = trt.flucT, #color = trt.meanT,
                group = interaction(trt.flucT, trt.maxT))) +
     geom_point(size = 2) +
@@ -700,8 +714,8 @@ dfs_tidy$wide %>%
     # geom_text(aes(label = n),
     #           vjust = -0.2, hjust = -0.3,
     #           show.legend = FALSE) +
-    scale_shape_manual(values = c(`33` = 21, `40` = 24)) +
-    scale_fill_manual(values = c(`3.5` = "white", `7` = "black"),
+    scale_shape_manual(values = c(`3.5` = 21, `7` = 24)) +
+    scale_fill_manual(values = c(`33` = "white", `40` = "black"),
                       ) +
   scale_linetype_manual(values = c(`3.5` = "solid", `7` = "dashed")) +
     guides(shape = guide_legend(override.aes = list(shape = c(16, 17))),
@@ -710,8 +724,8 @@ dfs_tidy$wide %>%
     #scale_color_manual(values = hcl.colors(4, "Roma", rev = TRUE)) +
     labs(#y = "days to exit (from transfer)",
          lty = "fluct temp",
-         shape = "max temp",
-         fill = "fluct temp",
+         fill = "max temp",
+         shape = "fluct temp",
         # color = "mean temp"
     ) +
   #facet_wrap(~instar) +
