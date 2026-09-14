@@ -84,7 +84,7 @@ df_cleaned <- df_filtered %>%
                         # !is.na(jdate.pupa) & 
                         #   (is.na(jdate.eclose) | !is.na(jdate.ppd)) ~ 0,
                         #!is.na(jdate.LPI) ~ NA_real_,
-                        !is.na(jdate.pupa) & is.na(jdate.eclose) ~ 0
+                        !is.na(jdate.pupa) & is.na(jdate.LPI) & is.na(jdate.eclose) ~ 0
                         ),
        
       # dev time points
