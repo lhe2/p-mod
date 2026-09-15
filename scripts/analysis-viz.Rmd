@@ -174,19 +174,19 @@ p$p1 + p$p2 + p$p3 +
 
 ```{r}
 df <- dfs_tidy$long %>%
-  #filter(trt.type == "dev") %>%
-  CalcDevSS() %>%
-  filter(instar %in% c("5th", "pupa", "eclose")) %>%
+  CalcDevSS() %>% SSToLong() %>%
+  filter(response == "tt",
+         instar %in% c("5th", "pupa", "eclose")) %>%
   mutate(instar = factor(instar, levels = c("5th", "pupa", "eclose")))
 
 .plotfn <- function(x){
   x %>% PlotDevVars() +
   list(
-    aes(y = avg.tt,
+    aes(y = avg,
         #col = instar # bad bc fill is also defined
         ),
-    geom_errorbar(aes(ymax = avg.tt + se.tt,
-                      ymin = avg.tt - se.tt),
+    geom_errorbar(aes(ymax = avg + se,
+                      ymin = avg - se),
                   width = 0.5, lty = "solid", show.legend = FALSE),
     labs(y = "duration (days)"),
     facet_grid(instar ~ ., scales = "free_y",
@@ -231,7 +231,7 @@ p$p1 + p$p2 + p$p3 +
 ```{r}
 df <- dfs_tidy$long %>%
   #filter(trt.type == "dev") %>%
-  CalcDevSS() %>%
+  CalcDevSS() %>% SSToLong() %>%
   filter(instar %in% c("5th", "pupa", "eclose")) %>%
   mutate(instar = factor(instar, levels = c("5th", "pupa", "eclose")),
          )
@@ -485,13 +485,6 @@ dfs_tidy$wide %>%
 
 # # tdt stuff
 
-## df prep
-
-```{r}
-# df prep
-df <- dfs_tidy$wide %>%
-  CalcTDTSS()
-```
 
 ## main
 
@@ -499,17 +492,19 @@ df <- dfs_tidy$wide %>%
 
 ```{r eval = FALSE}
 # one fig
-df %>%
-  #filter(instar == "24h") %>%
-  ggplot(aes(y = avg.exit, x = trt.maxT,
+dfs_tidy$wide %>%
+  CalcTDTSS() %>% SSToLong() %>%
+  filter(#instar == "24h"
+         response == "exit") %>%
+  ggplot(aes(y = avg, x = trt.maxT,
              #x = trt.meanT, shape = trt.maxT,
              #col = trt.flucT, 
               group = interaction(trt.flucT),
              )) +
   #facet_wrap(~cohort) +
   geom_line(aes(lty = trt.flucT,)) +
-  geom_errorbar(aes(ymax = avg.exit + se.exit,
-                    ymin = avg.exit - se.exit),
+  geom_errorbar(aes(ymax = avg + se,
+                    ymin = avg - se),
                 width = 0.25, lty = "solid", show.legend = FALSE
                 ) +
   geom_point(aes(col = trt.meanT, 
@@ -531,7 +526,8 @@ df %>%
 .plotfn <- function(x){
   x %>%
     filter(trt.type == "tdt",
-           instar == "0h" # drop dups
+           instar == "0h", # drop dups
+           response == "exit"
            ) %>%
     ggplot(aes(y = avg.exit, 
                fill = trt.maxT, shape = trt.flucT,
@@ -539,8 +535,8 @@ df %>%
                group = trt.flucT,)) +
     geom_point(size = 2) +
     #geom_line() +
-    geom_errorbar(aes(ymax = avg.exit + se.exit,
-                    ymin = avg.exit - se.exit),
+    geom_errorbar(aes(ymax = avg + se,
+                    ymin = avg - se),
                   width = 0.25, lty = "solid", show.legend = FALSE) +
     geom_text(aes(label = n),
               vjust = -0.2, hjust = -0.3,
@@ -612,15 +608,16 @@ dfs_tidy$wide %>%
 
 ## avg
 dfs_tidy$wide %>%
-  CalcTDTSS() %>%
-  ggplot(aes(y = avg.mass, x = instar,
+  CalcTDTSS() %>% SSToLong() %>%
+  filter(response == "mass") %>%
+  ggplot(aes(y = avg, x = instar,
                fill = trt.maxT, shape = trt.flucT,
                lty = trt.flucT, #color = trt.meanT,
                group = interaction(trt.flucT, trt.maxT))) +
     geom_point(size = 2) +
     geom_line() +
-    geom_errorbar(aes(ymax = avg.mass + se.mass,
-                    ymin = avg.mass - se.mass),
+    geom_errorbar(aes(ymax = avg + se,
+                    ymin = avg - se),
                   width = 0.25, lty = "solid", show.legend = FALSE) +
     # geom_text(aes(label = n),
     #           vjust = -0.2, hjust = -0.3,
@@ -675,13 +672,14 @@ dfs_tidy$wide %>%
 }
 
 
-
 # 2x2 by transfer day
-df %>% # from df prep chunk
+dfs_tidy$wide %>%
+  CalcTDTSS() %>% SSToLong() %>%
+  filter(response == "dmass") %>%
   .plotfn() +
-  aes(y = avg.dmass) +
-  geom_errorbar(aes(ymax = avg.dmass + se.dmass,
-                    ymin = avg.dmass - se.dmass),
+  aes(y = avg) +
+  geom_errorbar(aes(ymax = avg + se,
+                    ymin = avg - se),
                 width = 0.25, lty = "solid", show.legend = FALSE
   ) +
   facet_wrap(~instar, labeller = as_labeller(c(`24h` =  "24h after transfer to 40°C",
@@ -689,12 +687,13 @@ df %>% # from df prep chunk
   labs(y = "mass difference (mg)")
   
 
-
-df %>%
+dfs_tidy$wide %>%
+  CalcTDTSS() %>% SSToLong() %>%
+  filter(response == "rmass") %>%
   .plotfn() +
-  aes(y = avg.rmass) +
-  geom_errorbar(aes(ymax = avg.rmass + se.rmass,
-                    ymin = avg.rmass - se.rmass),
+  aes(y = avg) +
+  geom_errorbar(aes(ymax = avg + se,
+                    ymin = avg - se),
                 width = 0.25, lty = "solid", show.legend = FALSE
                 ) +
   facet_wrap(~instar, labeller = as_labeller(c(`24h` =  "24h:0h after transfer to 40°C",
@@ -705,7 +704,8 @@ df %>%
 ### combined mass/time
 
 ```{r}
-df %>% # from df prep chunk
+dfs_tidy$wide %>%
+  CalcTDTSS() %>% 
   filter(instar == "24h") %>%
   ggplot(aes(x = avg.dmass, y = avg.exit,
              #lty = cohort,
@@ -726,6 +726,7 @@ df %>% # from df prep chunk
 ```
 
 ```{r}
+# single facet
 .plotfn <- function(x){
   x %>%
     filter(instar %in% c("24h", "48h")) %>%
@@ -749,7 +750,8 @@ df %>% # from df prep chunk
 }
 
 # 0:24 vs 24:48
-df %>%
+dfs_tidy$wide %>%
+  CalcTDTSS() %>% 
   .plotfn() +
   aes(y = avg.dmass) +
   geom_errorbar(aes(ymax = avg.dmass + se.dmass,
@@ -759,7 +761,8 @@ df %>%
   labs(y = "change in mass (mg)",
        x = "h after transfer to 40°C",)
 
-df %>%
+dfs_tidy$wide %>%
+  CalcTDTSS() %>% 
   .plotfn() +
   aes(y = avg.rmass) +
   geom_errorbar(aes(ymax = avg.rmass + se.rmass,
