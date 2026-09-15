@@ -322,6 +322,31 @@ df <- dfs_tidy$long %>%
     scale_color_manual(values = hcl.colors(4, "Roma", rev = TRUE))
 }
 
+
+.plotfn2 <- function(x){
+  df %>%
+    filter(!(instar %in% c("wander", "pupa", "eclose"))) %>%
+    ggplot(aes(fill = trt.maxT, shape = trt.flucT,
+               lty = trt.flucT,
+               group = interaction(trt.maxT, trt.flucT))) +
+    geom_point(#aes(alpha = n),
+      size = 2
+      ) +
+    geom_line() +
+    scale_color_hue(direction = -1) +
+    theme_bw() +
+    facet_wrap(~is.sup, labeller = as_labeller(c(`0` = "non-supernumerary",
+                                                 `1` = "supernumerary")),
+               scales = "free_x") +
+    labs(lty = "fluct temp",
+         shape = "fluct temp", fill = "max temp",
+    ) +
+    scale_shape_manual(values = c(`3.5` = 21, `7` = 24)) +
+    scale_fill_manual(values = c(`33` = "white", `40` = "black")) +
+    guides(shape = guide_legend(override.aes = list(shape = c(16, 17))),
+           fill = guide_legend(override.aes = list(shape = c(1, 16))))
+}
+
 # dev trajectory
 df %>%
   .plotfn() +
@@ -336,27 +361,32 @@ df %>%
   labs(y = "ln mass", x = "time to instar (days)",
        shape= "instar")
 
-
+# bring back shape if using plotfn1
 # mass vs instar
 df %>%
-  .plotfn() +
+  .plotfn2() +
   aes(y = avg.logmass, x = instar,
-      shape = trt.maxT) +
+      #shape = trt.maxT
+      ) +
   geom_errorbar(aes(ymax = avg.logmass + se.logmass,
                     ymin = avg.logmass - se.logmass),
                 width = 0.1, lty = "solid", show.legend = FALSE) +
     labs(y = "ln mass", x = "instar",
-       shape= "max temp")
+       #shape= "max temp"
+       )
 
-# development rate vs instar
+# development time vs instar
 df %>%
-  .plotfn() +
+  .plotfn2() +
   aes(y = avg.tt, x = instar,
-      shape = trt.maxT) +
+      #shape = trt.maxT
+      ) +
   geom_errorbar(aes(ymax = avg.tt + se.tt,
                     ymin = avg.tt - se.tt),
                 width = 0.1, lty = "solid", show.legend = FALSE) +
-  labs(y = "time (days)", x = "instar", shape = "max temp")
+  labs(y = "time (days)", x = "instar", 
+       #shape = "max temp"
+       )
 ```
 
 ```{r}
