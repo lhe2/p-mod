@@ -14,8 +14,8 @@ library(here)
 library(tidyverse)
 library(patchwork) # for plot_layout
 # 
-# library(survival) # for fitting surv objects
-# library(survminer) # for plotting surv ojects
+library(survival) # for fitting surv objects
+library(survminer) # for plotting surv ojects
 
 source(here("scripts/wrangle.R"))
 source(here("scripts/viz_utils.R"))
@@ -553,13 +553,16 @@ dfs_tidy$wide %>%
 ```
 
 ```{r}
+df <- dfs_tidy$wide %>%
+  CalcTDTSS() %>% SSToLong()
+
 .plotfn <- function(x){
   x %>%
     filter(trt.type == "tdt",
            instar == "0h", # drop dups
            response == "exit"
            ) %>%
-    ggplot(aes(y = avg.exit, 
+    ggplot(aes(y = avg, 
                fill = trt.maxT, shape = trt.flucT,
                lty = trt.flucT, #color = trt.meanT,
                group = trt.flucT,)) +
@@ -634,8 +637,9 @@ dfs_tidy$wide %>%
   facet_wrap(~trt) +
   scale_color_viridis_c(option = "Plasma") +
   labs(x = "days from transfer")
+```
 
-
+```{r}
 ## avg
 dfs_tidy$wide %>%
   CalcTDTSS() %>% SSToLong() %>%
@@ -672,7 +676,30 @@ dfs_tidy$wide %>%
        y = "mass")
 ```
 
+### km curves
 
+```{r}
+# fit models
+
+df <- dfs_tidy$wide %>%
+  filter(trt.type == "tdt") %>%
+  # recode to fit package expectations
+  mutate(status = case_when(is.pup == 0 ~ 1,
+                            is.pup == 1 ~ 0))
+
+mods <- list(
+  #minT = survfit(Surv(tt.pmd, status) ~ trt.minT + trt.flucT, data = df),
+  maxT = survfit(Surv(tt.pmd, status) ~ trt.maxT + trt.flucT, data = df)
+  #meanT = survfit(Surv(tt.pmd, status) ~ trt.meanT + trt.flucT, data = df)
+)
+# too wonky to do stuff w ggsurvplot_list, so just do 1 by 1
+# also, they're all the same fig LOL just colored by diff things.
+
+ggsurvplot(mods$maxT, df,
+           color = "trt.maxT", linetype = "trt.flucT",
+           legend.title = "max temp", xlab = "Time (days)") +
+  scale_color_hue(direction = -1)
+```
 
 ## supp
 
@@ -801,7 +828,49 @@ dfs_tidy$wide %>%
                 )
 ```
 
-```{r}
+## stats
 
+```{r}
+# which part of temperature is the best predictor?
+df <- dfs_tidy$wide %>%
+  filter(trt.type == "tdt")
+
+mods <- list(
+  minT0 = lm(tt.pmd ~ trt.minT, data = df),
+  maxT0 = lm(tt.pmd ~ trt.maxT, data = df),
+  meanT0 = lm(tt.pmd ~ trt.meanT, data = df),
+  minT = lm(tt.pmd ~ trt.minT * trt.flucT, data = df),
+  maxT = lm(tt.pmd ~ trt.maxT * trt.flucT, data = df),
+  meanT = lm(tt.pmd ~ trt.meanT * trt.flucT, data = df)
+)
+
+AIC(mods$minT0, mods$maxT0, mods$meanT0) # mean > min > max
+AIC(mods$minT, mods$maxT, mods$meanT) # same
+
+summary(mods$minT)
+summary(mods$maxT)
+summary(mods$meanT)
+```
+
+```{r}
+# does age matter?
+df <- dfs_tidy$wide %>%
+  filter(trt.type == "tdt")
+
+# stats
+mods <- list(
+  m1 = lm(tt.pmd ~ tt.3rd, data = df)
+)
+
+anova(mods$m1) # HOPEFULLY ? NOT?
+
+# viz
+
+df %>%
+  ggplot(aes(y = tt.pmd, x = tt.3rd,
+             shape = trt.flucT, col = trt.maxT, lty = trt.flucT)) +
+  geom_point(position = "jitter") +
+  geom_smooth(method = "lm") +
+  scale_color_hue(direction = -1)
 
 ```
