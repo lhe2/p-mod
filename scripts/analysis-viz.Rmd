@@ -507,8 +507,28 @@ dfs_tidy$wide %>%
        col = "pupation success?")
 ```
 
+### dev outcomes
 
 ```{r}
+dfs_tidy$wide %>%
+  CalcOutcomesSS() %>% #View()
+  ggplot(aes(y = prop, x = type, fill = interaction(type, outcome))) +
+  geom_col() +
+  facet_wrap(~trt, labeller = as_labeller(p_scales$facs_trt),
+             nrow = 1) +
+  theme_bw()
+
+dfs_tidy$wide %>%
+  CalcOutcomesSS() %>% #View()
+  filter(!(type == "N" & outcome == "sup")) %>%
+  ggplot(aes(y = prop, x = trt, fill = interaction(outcome, type), 
+             alpha = outcome)) +
+  geom_col() +
+  theme_bw() +
+  scale_alpha_manual(values = c("pmd" = 0.75,
+                                "sup" = 1,
+                                "LPI" = 1,
+                                "pup" = 1))
 ```
 
 
@@ -674,6 +694,39 @@ dfs_tidy$wide %>%
     theme_bw() +
   labs(x = "hrs after transfer to 40C",
        y = "mass")
+
+## avg 24h change
+dfs_tidy$wide %>%
+  CalcTDTSS() %>% SSToLong() %>%
+  filter(response == "rmass",
+         instar != "0h") %>%
+  ggplot(aes(y = avg, x = instar,
+             fill = trt.maxT, shape = trt.flucT,
+             lty = trt.flucT, #color = trt.meanT,
+             group = interaction(trt.flucT, trt.maxT))) +
+  geom_point(size = 2) +
+  geom_line() +
+  geom_errorbar(aes(ymax = avg + se,
+                    ymin = avg - se),
+                width = 0.25, lty = "solid", show.legend = FALSE) +
+  # geom_text(aes(label = n),
+  #           vjust = -0.2, hjust = -0.3,
+  #           show.legend = FALSE) +
+  scale_shape_manual(values = c(`3.5` = 21, `7` = 24)) +
+  scale_fill_manual(values = c(`33` = "white", `40` = "black"),
+  ) +
+  scale_linetype_manual(values = c(`3.5` = "solid", `7` = "dashed")) +
+  scale_x_discrete(labels = c("24h" = "0 → 24h", "48h" = "24 → 48h")) +
+  guides(shape = guide_legend(override.aes = list(shape = c(16, 17))),
+         fill = guide_legend(override.aes = list(shape = c(1, 16),
+                                                 linetype = c("solid", "3223")))) +
+  labs(x = "time period",
+       y = "current mass:previous mass",
+       lty = "fluct temp",
+       fill = "max temp",
+       shape = "fluct temp",
+  ) +
+  theme_bw()
 ```
 
 ### km curves
