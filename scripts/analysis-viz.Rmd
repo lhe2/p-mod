@@ -456,13 +456,14 @@ dfs_tidy$wide %>%
 
 ### exit time
 
+```{r}
 dfs_tidy$wide %>%
   CalcTDTSS() %>% SSToLong() %>%
     filter(trt.type == "tdt",
            instar == "0h", # drop dups
            response == "exit"
            ) %>%
-    ggplot(aes(y = avg, 
+    ggplot(aes(y = avg, x = trt.meanT,
                fill = trt.maxT, shape = trt.flucT,
                lty = trt.flucT, #color = trt.meanT,
                group = trt.flucT,)) +
@@ -478,17 +479,17 @@ dfs_tidy$wide %>%
     scale_fill_manual(values = c(`33` = "white", `40` = "black")) +
     guides(shape = guide_legend(override.aes = list(shape = c(16, 17))),
            fill = guide_legend(override.aes = list(shape = c(1, 16)))) +
+    labs(y = "time to death\n(days after transfer)",
          #lty = "fluctuation (°C)",
          fill = "max temp",
          shape = "fluct temp",
-        # color = "mean temp"
+         x = "mean temp"
     ) +
     theme_bw()
-}
 
 ```
 
-### dev trajectory
+### dev trajectory (ish)
 
 ```{r}
 ## individuals
@@ -516,73 +517,66 @@ dfs_tidy$wide %>%
 ```
 
 ```{r}
-## avg
-dfs_tidy$wide %>%
-  CalcTDTSS() %>% SSToLong() %>%
-  filter(response == "mass") %>%
-  ggplot(aes(y = avg, x = instar,
+.plotfn <- function(x){
+  x %>%
+    ggplot(aes(y = avg, x = instar,
                fill = trt.maxT, shape = trt.flucT,
                lty = trt.flucT, #color = trt.meanT,
                group = interaction(trt.flucT, trt.maxT))) +
     geom_point(size = 2) +
     geom_line() +
     geom_errorbar(aes(ymax = avg + se,
-                    ymin = avg - se),
+                      ymin = avg - se),
                   width = 0.25, lty = "solid", show.legend = FALSE) +
     # geom_text(aes(label = n),
     #           vjust = -0.2, hjust = -0.3,
     #           show.legend = FALSE) +
     scale_shape_manual(values = c(`3.5` = 21, `7` = 24)) +
     scale_fill_manual(values = c(`33` = "white", `40` = "black"),
-                      ) +
-  scale_linetype_manual(values = c(`3.5` = "solid", `7` = "dashed")) +
+    ) +
+    scale_linetype_manual(values = c(`3.5` = "solid", `7` = "dashed")) +
     guides(shape = guide_legend(override.aes = list(shape = c(16, 17))),
            fill = guide_legend(override.aes = list(shape = c(1, 16),
                                                    linetype = c("solid", "3223")))) +
-    #scale_color_manual(values = hcl.colors(4, "Roma", rev = TRUE)) +
-    labs(#y = "days to exit (from transfer)",
-         lty = "fluct temp",
+    labs(lty = "fluct temp",
          fill = "max temp",
-         shape = "fluct temp",
-        # color = "mean temp"
-    ) +
-  #facet_wrap(~instar) +
-    theme_bw() +
-  labs(x = "hrs after transfer to 40C",
-       y = "mass")
+         shape = "fluct temp") +
+    theme_bw()
+}
 
-## avg 24h change
+## avg mass
+dfs_tidy$wide %>%
+  CalcTDTSS() %>% SSToLong() %>%
+  filter(response == "mass") %>%
+  .plotfn() +
+  #scale_color_manual(values = hcl.colors(4, "Roma", rev = TRUE)) +
+  labs(#y = "days to exit (from transfer)",
+    # color = "mean temp"
+  ) +
+  #facet_wrap(~instar) +
+  labs(x = "hrs after transfer to 40C",
+       y = "mass"
+       )
+
+## avg 24h change (%)
+dfs_tidy$wide %>%
+  CalcTDTSS() %>% SSToLong() %>% 
+  filter(response == "pmass",
+         instar != "0h") %>%
+  .plotfn() +
+  scale_x_discrete(labels = c("24h" = "0-24h", "48h" = "24-48h")) +
+  labs(x = "hrs after transferring to 40C",
+       y = "% change in mass")
+
+## avg 24h change (ratio)
 dfs_tidy$wide %>%
   CalcTDTSS() %>% SSToLong() %>%
   filter(response == "rmass",
          instar != "0h") %>%
-  ggplot(aes(y = avg, x = instar,
-             fill = trt.maxT, shape = trt.flucT,
-             lty = trt.flucT, #color = trt.meanT,
-             group = interaction(trt.flucT, trt.maxT))) +
-  geom_point(size = 2) +
-  geom_line() +
-  geom_errorbar(aes(ymax = avg + se,
-                    ymin = avg - se),
-                width = 0.25, lty = "solid", show.legend = FALSE) +
-  # geom_text(aes(label = n),
-  #           vjust = -0.2, hjust = -0.3,
-  #           show.legend = FALSE) +
-  scale_shape_manual(values = c(`3.5` = 21, `7` = 24)) +
-  scale_fill_manual(values = c(`33` = "white", `40` = "black"),
-  ) +
-  scale_linetype_manual(values = c(`3.5` = "solid", `7` = "dashed")) +
-  scale_x_discrete(labels = c("24h" = "0 → 24h", "48h" = "24 → 48h")) +
-  guides(shape = guide_legend(override.aes = list(shape = c(16, 17))),
-         fill = guide_legend(override.aes = list(shape = c(1, 16),
-                                                 linetype = c("solid", "3223")))) +
+  .plotfn() +
+  scale_x_discrete(labels = c("24h" = "0h / 24h", "48h" = "24h / 48h")) +
   labs(x = "time period",
-       y = "current mass:previous mass",
-       lty = "fluct temp",
-       fill = "max temp",
-       shape = "fluct temp",
-  ) +
-  theme_bw()
+       y = "current mass / previous mass")
 ```
 
 ### km curves
@@ -594,20 +588,25 @@ df <- dfs_tidy$wide %>%
   filter(trt.type == "tdt") %>%
   # recode to fit package expectations
   mutate(status = case_when(is.pup == 0 ~ 1,
-                            is.pup == 1 ~ 0))
+                            #is.pup == 1 ~ 0
+                            ))
 
 mods <- list(
-  #minT = survfit(Surv(tt.pmd, status) ~ trt.minT + trt.flucT, data = df),
-  maxT = survfit(Surv(tt.pmd, status) ~ trt.maxT + trt.flucT, data = df)
-  #meanT = survfit(Surv(tt.pmd, status) ~ trt.meanT + trt.flucT, data = df)
+  minT = survfit(Surv(tt.pmd, status) ~ trt.minT + trt.flucT, data = df),
+  maxT = survfit(Surv(tt.pmd, status) ~ trt.maxT + trt.flucT, data = df),
+  meanT = survfit(Surv(tt.pmd, status) ~ trt.meanT + trt.flucT, data = df)
 )
 # too wonky to do stuff w ggsurvplot_list, so just do 1 by 1
 # also, they're all the same fig LOL just colored by diff things.
 
-ggsurvplot(mods$maxT, df,
-           color = "trt.maxT", linetype = "trt.flucT",
-           legend.title = "max temp", xlab = "Time (days)") +
-  scale_color_hue(direction = -1)
+ggsurvplot(mods$meanT, df, 
+           color = "trt.meanT", linetype = "trt.flucT", # depends on which mods$ picked
+           #legend.title = "max temp", 
+           xlab = "Time (days)") +
+  scale_color_manual(values = c(`36.5` = "#E6550D", `33` = "#FD8D3C",
+                                `29.5` = "#3182BD", `26` = "#6BAED6"))
+  #scale_color_hue(direction = -1) #+
+  #facet_wrap(~trt.flucT)
 ```
 
 ## supp
