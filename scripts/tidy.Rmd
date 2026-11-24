@@ -67,6 +67,10 @@ df_cleaned <- df_filtered %>%
       trt.minT = as.numeric(str_sub(trt, 2)),
       trt.meanT = (trt.maxT + trt.minT)/2,
       trt.flucT = (trt.maxT - trt.minT)/2,
+      ## pct change
+      pmass.24h = (mass.24h - mass.0h)/mass.24h,
+      pmass.48h = (mass.48h - mass.24h)/mass.24h,
+      
       ## mass difference
       dmass.24h = mass.24h - mass.0h,
       dmass.48h = mass.48h - mass.24h,
@@ -117,7 +121,8 @@ dfs_tidy <- list(
     select(-c(jdate.transfer, if.ignore)),
   
   long = df_cleaned %>%
-    pivot_longer(cols = starts_with(c("jdate", "mass", "tt", "dmass", "rmass")),
+    pivot_longer(cols = starts_with(c("jdate", "mass", "tt", 
+                                      "pmass", "dmass", "rmass")),
                  names_to = c(".value", "instar"),
                  values_drop_na = TRUE,
                  names_pattern = ("([a-z]*\\d*)\\.(\\d*[a-z|A-Z]*)")) %>%

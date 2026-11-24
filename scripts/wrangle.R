@@ -32,22 +32,29 @@ CalcSurvSS <- function(wide_df){
   wide_df %>%
     filter(trt.type == "dev") %>%
     group_by(across(starts_with("trt")), .add = TRUE) %>%
-    summarise(n.pup = n(),
-              n.ec = sum(is.pup == 1), # TODO: omit the pupae that got moved?
-              prop.pup = sum(is.pup > 0)/n.pup,
-              se.pup = seprop(prop.pup, n.pup),
+    summarise(N = n(),
+              n.5th = sum(!is.na(jdate.5th)),
+              n.pup = sum(is.pup == 1),
+              n.ec = sum(is.ec == 1, na.rm = TRUE), # TODO: omit the pupae that got moved?
+              
+              prop.5th = n.5th/N,
+              se.5th = seprop(prop.5th, N),
+              prop.pup = sum(is.pup > 0)/N,
+              se.pup = seprop(prop.pup, N),
               prop.ec = sum(is.ec == 1, na.rm = TRUE)/n.pup,
               se.ec = seprop(prop.ec, n.pup)) %>%
-    ungroup() %>%
-    pivot_longer(cols = starts_with(c("n.", "prop.", "se.")),
+    ungroup() %>% 
+    pivot_longer(cols = starts_with(c(#"n.", 
+                                      "prop.", "se.")),
                  names_to = c(".value", "instar"),
                  names_sep = "\\.") %>%
-    mutate(instar = factor(instar, levels = c("pup", "ec")),
-           
-           # drop data pts for prop ec where 0 pupa survived
-           across(c("prop", "se"), ~ case_when(instar == "ec" & trt == 433 ~ NA_real_,
-                                               TRUE ~ as.numeric(.x)))
-           ) 
+    mutate(instar = factor(instar, levels = c("5th", "pup", "ec")),
+           n = case_when(instar %in% c("5th", "pup") ~ as.numeric(N),
+                             instar == "ec" ~ n.pup),
+           # # drop data pts for prop ec where 0 pupa survived
+           # across(c("prop", "se"), ~ case_when(instar == "ec" & trt == 433 ~ NA_real_,
+           #                                     TRUE ~ as.numeric(.x)))
+           )
 }
 
 CalcOutcomesSS <- function(wide_df){
@@ -115,7 +122,7 @@ CalcTDTSS <- function(wide_df){
                       )),
              .add = TRUE) %>% 
     summarise(n = n(),
-              across(.cols = c(mass, dmass, rmass, exit),
+              across(.cols = c(mass, dmass, rmass, pmass, exit),
                      .fns = list(avg = ~ mean(.x, na.rm = TRUE),
                                  se = se),
                      .names = "{.fn}.{.col}")
