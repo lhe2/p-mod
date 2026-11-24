@@ -35,47 +35,201 @@ dfs_tidy <- dfs_tidy %>%
 
 # # development
 
+## main 
 
+### plot fn 
 ```{r}
+PlotDev <- function(x){
   x %>%
+    ggplot(aes(
+      x = trt.meanT,
+      fill = trt.maxT, 
+      shape = trt.flucT, lty = trt.flucT,
+      group = trt.flucT
+      )) +
     geom_point(size = 2) +
     scale_shape_manual(values = c(`3.5` = 21, `7` = 24)) +
     scale_fill_manual(values = c(`33` = "white", `40` = "black")) +
     guides(shape = guide_legend(override.aes = list(shape = c(16, 17))),
            fill = guide_legend(override.aes = list(shape = c(1, 16)))) +
+    labs(x = "mean temp", fill = "max temp", shape = "fluct temp") +
+    # TODO: need separate Ns for pups and eclose lol
+    geom_text(aes(label = n),
+              vjust = -0.3, hjust = -0.3, show.legend = FALSE) +
     theme_bw()
 }
 ```
 
+### plots (big 3)
 
+```{r}
+# survival 
 dfs_tidy$wide %>%
+  CalcSurvSS() %>% #View()
+  PlotDev() +
+  aes(y = prop) +
   geom_errorbar(aes(ymax = prop + se,
                     ymin = prop - se),
                 width = 0.25, lty = "solid", show.legend = FALSE) +
+  facet_grid(~ instar, 
+             labeller = labeller(instar = c("5th" = "hatch to 5th",
+                                            "pup" = "hatch to pupation",
+                                            "ec" = "pup to eclosion"))) +
+  labs(y = "% survived")
+
+# dev time
+dfs_tidy$long %>%
+  CalcDevSS() %>% SSToLong() %>% 
+  filter(response == "tt",
+         instar %in% c("5th", "pupa", "eclose")) %>%
+  mutate(instar = factor(instar, levels = c("5th", "pupa", "eclose"))) %>%
+  PlotDev() +
+  aes(y = avg) +
+  geom_errorbar(aes(ymax = avg + se,
+                    ymin = avg - se),
+                width = 0.25, lty = "solid", show.legend = FALSE) +
+  facet_grid(~ instar, 
+             labeller = labeller(instar = c("5th" = "hatch to 5th",
+                                            "pupa" = "hatch to pupa",
+                                            "eclose" = "pupa to eclose")),
+             #scales = "free"
+             ) +
+  labs(y = "dev time (days)")
+  
+# mass
+dfs_tidy$long %>%
+  CalcDevSS() %>% SSToLong() %>% 
+  filter(response == "mass_g",
+         instar %in% c("5th", "pupa", "eclose")) %>%
+  mutate(instar = factor(instar, levels = c("5th", "pupa", "eclose"))) %>%
+  PlotDev() +
+  aes(y = avg) +
+  geom_errorbar(aes(ymax = avg + se,
+                    ymin = avg - se),
+                width = 0.25, lty = "solid", show.legend = FALSE) +
+  facet_grid(~ instar
+             ) +
+  labs(y = "mass (g)")
 ```
 
 
 
 
+## misc
 
 
+### mortality
 
 ```{r}
+dfs_tidy$wide %>%
+  # df prep
+    filter(trt.type == "dev",
+           #is.pup == 0
+           ) %>%
+  mutate(is.5th = case_when(is.pup == 0 & !is.na(jdate.5th) ~ 1,
+                            TRUE ~ 0),
+         is.4th = case_when(is.pup == 0 & is.na(jdate.5th) & !is.na(jdate.4th) ~ 1,
+                            TRUE ~ 0),
+         is.3rd = case_when(is.pup == 0 & is.na(jdate.4th) ~ 1,
+                            TRUE ~ 0)
+         ) %>%
+  group_by(trt, trt.meanT, trt.maxT, trt.flucT) %>%
+    summarise(N = n(),
+           died.5th = sum(is.5th),
+           died.4th = sum(is.4th),
+           died.3rd = sum(is.3rd),
+           prop.LPI = sum(is.pup > 1)/N,
+           prop.surv = sum(is.pup == 1)/N,
+           prop.5th = died.5th/N,
+           prop.4th = died.4th/N,
+           prop.3rd = died.3rd/N,
+           ) %>% 
+  pivot_longer(cols = starts_with("prop"),
+               names_to = c(".value", "instar"),
+               names_sep = "\\.") %>%
+  mutate(instar = factor(instar, levels = c("surv", "LPI", "5th", "4th", "3rd"
+                                            ))) %>%
 
   
+  # plot
+  ggplot(aes(y = prop, x = trt.meanT,
+               fill = instar)) +
+    geom_col(position = "stack") +
+  geom_text(data = . %>% distinct(N, .by = trt, .keep_all = TRUE), 
+            mapping = aes(label = N, y = 1.05)) +
+  scale_fill_manual(values = c("surv" = "#6BAED6", "LPI" = "#BDD7E7",
+                               "5th" = "#FD8D3C", "4th" = "#FDBE85", "3rd" = "#FEEDDE"),
+                    labels = c("surv" = "pupated", "LPI" = "pupated (LPI)",
+                               "5th" = "died 5+", "4th" = "died 4", "3rd" = "died 1-3")) +
+  labs(y = "proportion", x = "mean temp",
+       fill = "outcome",) +
+  theme_bw()
   
 
 ```
 
 
+### dev trajectories
 
+#### grouped
 
+```{r}
+# incls LPIs
+
+dfs_tidy$long %>%
+  mutate(instar = case_when(instar == "LPI" ~ "pupa",
+                            TRUE ~ instar),
+         is.pup = case_when(is.pup == 2 ~ 1,
+                            TRUE ~ is.pup),
+         is.pup = factor(is.pup, levels = c(1, 0))) %>%
+  filter((trt != 433 & is.pup == 1) | trt == 433
+         ) %>%
+  group_by(is.pup, trt, trt.meanT, trt.maxT, trt.flucT) %>%
+  CalcDevSS() %>%
+  filter(trt.type == "dev",
+         instar %in% c("3rd", "4th", "5th", "wander", "pupa"
+                       )
+         ) %>%
+  ggplot(aes(y = avg.logmass, x = avg.tt,
+             shape = trt.flucT, fill = trt.maxT,
+             alpha = is.pup,
+             lty = trt.flucT,
+             #col = trt.meanT
+             )) +
+  geom_point(size = 2) +
+  geom_line() +
+  # hard to see errorbars
+  # geom_errorbar(aes(ymax = avg.logmass + se.logmass,
+  #                   ymin = avg.logmass - se.logmass),
+  #               width = 0.25, lty = "solid", show.legend = FALSE) +
+  # geom_errorbarh(aes(xmax = avg.tt + se.tt,
+  #                    xmin = avg.tt - se.tt),
+  #                height = 0.25, lty = "solid", show.legend = FALSE) +
+  scale_shape_manual(values = c(`3.5` = 21, `7` = 24)) +
+  scale_fill_manual(values = c(`33` = "white", `40` = "black")) +
+  scale_alpha_manual(values = c(`1` = 1, `0` = 0.45),
+                     labels = c(`1` = "pupated", `0` = "died")) +
+  # scale_color_manual(values = scales::viridis_pal(option = "inferno", direction = 1)(4)
+  # ) +
+  guides(shape = guide_legend(override.aes = list(shape = c(16, 17))),
+         fill = guide_legend(override.aes = list(shape = c(1, 16)))) +
+  labs(y = "ln(g)", x = "days",
+       fill = "max temp", 
+       shape = "fluct temp", lty = "fluct temp",
+       #col = "mean temp",
+       alpha = "outcome",
+       title = "development trajectories") +
+  theme_bw()
 
 ```
 
 
+#### by sup
 ```{r}
 # plots avgs; incls pmds
+# TODO
+# - or try fill = is.sup (empty = sup)
+
 df <- dfs_tidy$long %>%
   filter(#is.sup != 1 # or just NA this column if dgaf
          ) %>%
@@ -199,7 +353,7 @@ df <- dfs_tidy$long %>%
 df %>%
   #filter(is.pup == 0) %>%
   ggplot(aes(y = logmass, x = tt,
-             shape = instar,
+             #shape = instar,
              group = id,
              color = as.factor(is.pup),
              lty = as.factor(is.sup)
