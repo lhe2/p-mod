@@ -6,6 +6,17 @@
 ## load math fns
 source(here("scripts/math_utils.R"))
 
+
+# misc --------------------------------------------------------------------
+
+# for things with avg, se
+SSToLong <- function(wide_ss){
+  wide_ss %>%
+    pivot_longer(starts_with(c("avg.", "se.", "prop")),
+                 names_to = c(".value", "response"),
+                 names_sep = "\\.")
+}
+
 # dev summaries -----------------------------------------------------------
 
 CalcDevSS <- function(long_df){
@@ -132,12 +143,4 @@ CalcTDTSS <- function(wide_df){
               # se.exit = se(tt.pmd)
     ) %>%
     ungroup()
-}
-
-# for things with avg, se
-SSToLong <- function(wide_ss){
-  wide_ss %>%
-  pivot_longer(starts_with(c("avg.", "se.")),
-               names_to = c(".value", "response"),
-               names_sep = "\\.")
 }
